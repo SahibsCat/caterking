@@ -1,0 +1,428 @@
+# \*\*🧾 SAHIBS CATERING - FULL WEBSITE UI & FUNCTIONAL DOCUMENT
+
+<br/>Database workflow  
+<br/>\*\*1\. Primary Service Categories
+
+# Only Delivery: The product is delivered to the customer without any on-site service staff
+
+# \*customizable menu
+
+# Buffet + Service: Includes food delivery along with on-site service personnel to manage the event
+
+# \*customizable menu
+
+# Meal Boxes: Features a fixed menu (no customization) where customers can only increase the quantity of boxes
+
+# Customization: A flexible option where customers can select individual items to create a personalized order collection
+
+#
+
+# 2\. Menu and Pricing Structure
+
+Pricing Tiers: Most services must be offered in three distinct price sectors: Standard, Premium, and Elite.
+
+# Dietary Options: Customers must be able to select from Veg, Non-Veg, or Combined (mixed) menus
+
+# Meal Box Varieties: Specific categories for meal boxes include Adult, Snack, and Kids options
+
+# Minimum Order Quantity (MOQ): Delivery and meal box services will have a base MOQ, starting at 10 people or 10 boxes
+
+# 3\. Scaling and Calculation Logic
+
+# Automated Weight Scaling: The backend must automatically calculate food weights based on the guest count (e.g., if 10 people require 1kg of Biryani, the system must automatically update to 2kg if 20 people are selected)
+
+# Quantity Increments: Guest counts should be adjustable in increments of five (e.g., 10, 15, 20, etc.)
+
+# Staff Allocation: The system must automatically calculate the required number of service staff based on the guest count and the selected pricing tier
+
+# Final Costing: The total price shown to the customer must be a aggregate of the Food Cost, Service Cost, and Transport Cost
+
+# 4\. User Interface and Experience (UI/UX)
+
+# Inclusion Visibility: A pop-up should appear during the "Delivery Only" flow to inform customers of default cutlery provided (plates, bowls, juice, disposables)
+
+# Upselling Flow: Options for "Additional Choices" (e.g., tables, chairs, frill cloths) must be presented at the final stage of the booking to prevent early "price shock" for the user
+
+# Review Phase: Customers must be able to review their finalized menu and customization before proceeding to the final booking.\*\*
+
+<br/>\*\*
+
+# **1\. 🎯 PROJECT GOAL**
+
+Build a **fully functional catering booking platform** similar to Caterninja with:
+
+- Step-by-step booking flow
+- Package-based + customizable menu system
+- Fixed meal pack ordering
+- Dynamic pricing (live updates)
+- Stripe payment integration
+- Admin panel for control
+
+# **2\. 🧱 WEBSITE STRUCTURE**
+
+### **Main Pages**
+
+- **Home Page**
+- **Book Catering (Main Flow)**
+- **Meal Packs (Quick Order Page)**
+- **About Us**
+- **Contact**
+- **Admin Panel (Separate)**
+
+# **3\. 🏠 HOME PAGE UI**
+
+### **Sections**
+
+- Hero Banner  
+   👉 "Catering in UAE - Book in Minutes"
+- CTA Buttons
+  - "Book Catering"
+  - "Order Meal Packs"
+- Packages Preview
+  - Standard / Premium / Elite
+- How It Works (3 Steps)
+- FAQ
+- Footer
+
+# **4\. 📋 MAIN BOOKING FLOW (CORE FEATURE)**
+
+### **UX TYPE:**
+
+👉 Multi-step form (Single Page Smooth Flow)
+
+## Dropdown
+
+- - Dubai
+    - Sharjah
+
+- Full Name \*
+- Phone Number \*  
+   (Validation: +971 format)
+- Email Address \*
+- Address / Venue \*
+- Event Date (Date Picker)
+- Event Time (Time Picker)
+- Number of Guests (Min: 15)
+- Occasion Type (Dropdown)
+- Service Type:
+  - Delivery (24 hrs notice)
+  - Delivery + Service (48 hrs)
+  - Buffet (48 hrs)
+- Food Preference:
+  - Vegetarian (Filter only Veg Item)
+  - Non-Veg (show Only Non Veg Item)
+  - Mixed
+- Special Notes (Textarea)
+- Terms & Conditions
+
+**UI Cards**
+
+| **Package** | **Price**                         |
+| ----------- | --------------------------------- |
+| Standard    | AED 35(Show Menu and food Items)  |
+| Premium     | AED 50 (Show Menu and food Items) |
+| Elite       | AED 70 (Show Menu and food Items) |
+
+👉 On Click:
+
+- Move to menu selection
+- Load menu based on package.
+
+## **🍽️ MENU CUSTOMIZATION (IMPORTANT)**
+
+### **🔥 THIS IS YOUR CORE FEATURE**
+
+After selecting package:
+
+### **UI Layout:**
+
+**Left Side: Available Menu Items**
+
+- Starters
+- Main Course
+- Breads
+- Desserts
+- Add-ons
+
+**Right Side: Selected Items (Cart Style)**
+
+### **User Actions:**
+
+✅ Add item  
+✅ Remove item  
+✅ Edit quantity  
+✅ Edit price (admin-controlled or limited)  
+✅ Increase/decrease MOU (Minimum Order Units)
+
+### **Each Item Card:**
+
+- Item Name
+- Base Price
+- Quantity Selector (+ / -)
+- MOU control
+- "Add" Button
+
+### **Price Calculation (Live)**
+
+Total = (Guests x Item Price × Quantity)
+
+OR
+
+Total = Package Base Price × Guests + Add-ons
+
+👉 Show:
+
+- Subtotal
+- GST / VAT (if needed)
+- Grand Total
+
+## **🧾 REVIEW & CONFIRM**
+
+Show:
+
+- Customer Details
+- Event Details
+- Selected Menu
+- Total Price
+- Automatically Genrate the Order ID
+- Terms and Conditions
+- Refund Policy
+
+## **💳 PAYMENT (STRIPE)**
+
+### **Integration:**
+
+Use:
+
+- Stripe Checkout OR
+- Stripe Payment Element
+
+### **Payment Flow:**
+
+- Click "Proceed to Pay"
+- Redirect to Stripe
+- Payment Success → Confirmation Page
+- Email Confirmation
+
+# **5\. 🍱 MEAL PACK PAGE (SECOND FLOW)**
+
+👉 This is **NO customization - quick order**
+
+## **UI Structure:**
+
+### **Grid Layout**
+
+Each Meal Pack Card:
+
+- Image
+- Title
+- Menu Included
+- Price (Fixed)
+- "Add to Cart"
+- MOQ
+
+### **Example:**
+
+**Meal Pack A - AED 25**
+
+- Rice
+- Curry
+- Bread
+- Dessert
+
+## **Flow:**
+
+- Add to cart
+- Adjust quantity
+- Enter basic details
+- Go directly to payment
+- Stripe checkout
+
+# **6\. 🧠 BACKEND LOGIC**
+
+## **DATABASE STRUCTURE (MongoDB)**
+
+### **Collections:**
+
+### **1\. Users**
+
+name
+
+phone
+
+email
+
+address
+
+### **2\. Orders**
+
+user_id
+
+event_details
+
+package_type
+
+menu_items\[\]
+
+total_price
+
+payment_status
+
+created_at
+
+### **3\. Menu Items**
+
+name
+
+category
+
+price
+
+package_type
+
+is_customizable
+
+### **4\. Meal Packs**
+
+name
+
+items\[\]
+
+price
+
+image
+
+# **7\. 🧑‍💻 ADMIN PANEL**
+
+## **Features:**
+
+### **Dashboard**
+
+Login ID | Password
+
+- Total Orders
+- Revenue
+- Pending Orders
+
+### **Menu Management**
+
+- Add/Edit/Delete items
+- Assign to package
+
+### **Package Management**
+
+- Change pricing
+- Control menu items
+
+### **Order Management**
+
+- View orders
+- Update status
+
+### **Meal Pack Management**
+
+- Add packs
+- Update price
+
+# **8\. ⚙️ TECH STACK**
+
+### **Frontend:**
+
+- React.js
+- Tailwind CSS
+
+### **Backend:**
+
+- Node.js + Express
+- API Integration
+- API key
+
+### **Database:**
+
+- MongoDB
+
+### **Payment:**
+
+- stripe
+
+# **9\. 🎨 UI DESIGN STYLE (SAHIBS BRAND)**
+
+- Colors:
+  - **#B89271** → Warm Tan / Sand Brown
+  - **#0A0A0A** → Rich Black
+  - **#FFFFFF** → Pure White
+  - **#222222** → Charcoal Black
+  - **#BBBBBB** → Light Gray
+  - **#F5F5F5** → White Smoke
+  - **#253D4E** → Deep Teal Blue
+  - **#2B2926** → Dark Coffee Brown
+  - **#3F3C39** → Smoky Brown
+  - **#B89271** (again) → Warm Tan / Sand Brown
+- Style:
+  - Premium luxury look
+  - Clean cards
+  - Smooth transitions
+
+# **10\. 🚀 USER FLOW SUMMARY**
+
+### **Catering Flow:**
+
+Home → Book Catering → Details → Package → Customize Menu → Review → Payment
+
+### **Meal Pack Flow:**
+
+Home → Meal Packs → Add → Checkout → Payment
+
+# **11\. 🔥 IMPORTANT FEATURES (DON'T MISS)**
+
+✔ Live price update  
+✔ Menu customization  
+✔ Minimum guest validation  
+✔ Package-based filtering  
+✔ Stripe integration  
+✔ Mobile responsive  
+✔ Admin control
+
+**Additional Requirements**
+
+1\. Primary Service Categories
+
+Only Delivery: The product is delivered to the customer without any on-site service staff.
+
+\*customizable menu
+
+Buffet + Service: Includes food delivery along with on-site service personnel to manage the event.
+
+\*customizable menu
+
+Meal Boxes: Features a fixed menu (no customization) where customers can only increase the quantity of boxes.
+
+Customization: A flexible option where customers can select individual items to create a personalized order collection.
+
+2\. Menu and Pricing Structure
+
+Pricing Tiers: Most services must be offered in three distinct price sectors: Standard, Premium, and Elite.
+
+Dietary Options: Customers must be able to select from Veg, Non-Veg, or Combined (mixed) menus.
+
+Meal Box Varieties: Specific categories for meal boxes include Adult, Snack, and Kids options.
+
+Minimum Order Quantity (MOQ): Delivery and meal box services will have a base MOQ, starting at 10 people or 10 boxes.
+
+3\. Scaling and Calculation Logic
+
+Automated Weight Scaling: The backend must automatically calculate food weights based on the guest count (e.g., if 10 people require 1kg of Biryani, the system must automatically update to 2kg if 20 people are selected).
+
+Quantity Increments: Guest counts should be adjustable in increments of five (e.g., 10, 15, 20, etc.).
+
+Staff Allocation: The system must automatically calculate the required number of service staff based on the guest count and the selected pricing tier.
+
+Final Costing: The total price shown to the customer must be a aggregate of the Food Cost, Service Cost, and Transport Cost.
+
+4\. User Interface and Experience (UI/UX)
+
+Inclusion Visibility: A pop-up should appear during the "Delivery Only" flow to inform customers of default cutlery provided (plates, bowls, juice, disposables).
+
+Upselling Flow: Options for "Additional Choices" (e.g., tables, chairs, frill cloths) must be presented at the final stage of the booking to prevent early "price shock" for the user.
+
+Review Phase: Customers must be able to review their finalized menu and customization before proceeding to the final booking.

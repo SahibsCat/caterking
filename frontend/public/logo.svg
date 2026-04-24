@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <circle cx="50" cy="50" r="48" fill="#1C1C1C" stroke="#D4AF37" stroke-width="4" />
+  <path d="M25 45 L50 20 L75 45 L65 70 L35 70 Z" fill="#D4AF37" />
+  <text x="50" y="85" font-family="'Playfair Display', serif" font-size="14" font-weight="bold" fill="#D4AF37" text-anchor="middle">CK</text>
+</svg>
