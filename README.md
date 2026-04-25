@@ -30,3 +30,4 @@ Current project plans and detailed setup instructions:
 ## 💻 Cross-Platform Notes
 - All code is written in platform-agnostic TypeScript/JavaScript.
 - Antigravity (AI Assistant) will automatically pick up the project state by reading the local files, so no manual "state transfer" is required for your team members.
+# caterking
