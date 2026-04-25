@@ -81,7 +81,7 @@ const OrderManager = () => {
 
   const exportToCSV = () => {
     const headers = ['Order ID', 'Customer Name', 'Email', 'Phone', 'Event Date', 'Venue', 'Guests', 'Occasion', 'Food Preference', 'Total Price', 'Status', 'Delivery Address'];
-    const rows = filteredOrders.map(o => [
+   const rows = filteredOrders.map(o => [
       o.orderId,
       o.customerDetails?.name || 'N/A',
       o.customerDetails?.email || 'N/A',
@@ -93,9 +93,10 @@ const OrderManager = () => {
       o.eventDetails.foodPreference || 'Mixed',
       o.pricing.total,
       o.status,
+      // Fixed logic below:
       typeof o.customerDetails?.deliveryAddress === 'object' 
         ? `${o.customerDetails.deliveryAddress.flatVilla} ${o.customerDetails.deliveryAddress.street} ${o.customerDetails.deliveryAddress.area}`.replace(/,/g, '')
-        : (o.customerDetails?.deliveryAddress || 'N/A').replace(/,/g, '')
+        : String(o.customerDetails?.deliveryAddress || 'N/A').replace(/,/g, '')
     ]);
 
     const csvContent = "data:text/csv;charset=utf-8," 
