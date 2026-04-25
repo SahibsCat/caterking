@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import MenuItem from '../models/MenuItem.js';
 import Package from '../models/Package.js';
+import AvailableDate from '../models/AvailableDate.js';
 
 dotenv.config();
 
@@ -88,12 +89,24 @@ const seedDatabase = async () => {
     // Clear existing data
     await MenuItem.deleteMany({});
     await Package.deleteMany({});
+    await AvailableDate.deleteMany({});
     console.log('Cleared existing data');
+
+    // Generate next 30 days for availability
+    const availableDates = [];
+    const today = new Date();
+    for (let i = 1; i <= 30; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      date.setHours(0, 0, 0, 0);
+      availableDates.push({ date });
+    }
 
     // Insert new data
     await MenuItem.insertMany(menuItems);
     await Package.insertMany(packages);
-    console.log('Database seeded successfully!');
+    await AvailableDate.insertMany(availableDates);
+    console.log('Database seeded successfully (including 30 days of availability)!');
 
     process.exit(0);
   } catch (error) {

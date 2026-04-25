@@ -59,9 +59,9 @@ const OrderManager = () => {
       const token = localStorage.getItem('adminToken');
       const response = await fetch(`http://localhost:5000/api/admin/orders/${id}/status`, {
         method: 'PATCH',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ status })
       });
@@ -94,12 +94,12 @@ const OrderManager = () => {
       o.pricing.total,
       o.status,
       // Fixed logic below:
-      typeof o.customerDetails?.deliveryAddress === 'object' 
+      typeof o.customerDetails?.deliveryAddress === 'object'
         ? `${o.customerDetails.deliveryAddress.flatVilla} ${o.customerDetails.deliveryAddress.street} ${o.customerDetails.deliveryAddress.area}`.replace(/,/g, '')
         : String(o.customerDetails?.deliveryAddress || 'N/A').replace(/,/g, '')
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8," 
+    const csvContent = "data:text/csv;charset=utf-8,"
       + headers.join(",") + "\n"
       + rows.map(r => r.join(",")).join("\n");
 
@@ -132,7 +132,7 @@ const OrderManager = () => {
           <h1 className="text-3xl font-playfair font-bold text-white mb-2">Order Management</h1>
           <p className="text-gray-400">Track and manage customer bookings</p>
         </div>
-        <button 
+        <button
           onClick={exportToCSV}
           className="bg-tan text-richBlack px-6 py-2 rounded-full font-bold hover:scale-105 transition-all"
         >
@@ -143,8 +143,8 @@ const OrderManager = () => {
       <div className="flex flex-wrap gap-4 bg-charcoal p-4 rounded-xl border border-white/5">
         <div className="flex flex-col gap-1">
           <label className="text-[10px] uppercase font-bold text-gray-500 ml-2">Start Date</label>
-          <input 
-            type="date" 
+          <input
+            type="date"
             className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:border-tan transition-colors text-sm"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
@@ -152,14 +152,14 @@ const OrderManager = () => {
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-[10px] uppercase font-bold text-gray-500 ml-2">End Date</label>
-          <input 
-            type="date" 
+          <input
+            type="date"
             className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:border-tan transition-colors text-sm"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
         </div>
-        <button 
+        <button
           onClick={() => { setStartDate(''); setEndDate(''); }}
           className="mt-auto mb-1 text-xs text-gray-400 hover:text-white underline underline-offset-4"
         >
@@ -203,15 +203,13 @@ const OrderManager = () => {
                         <p className="text-sm font-semibold">{new Date(order.eventDetails.date).toLocaleDateString()}</p>
                         <p className="text-xs text-gray-500">{order.eventDetails.guestCount} Guests • {order.eventDetails.occasion}</p>
                         {order.eventDetails.foodPreference && (
-                          <span className={`inline-flex items-center gap-1 mt-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                            order.eventDetails.foodPreference === 'Veg' ? 'bg-green-500/15 text-green-400' :
-                            order.eventDetails.foodPreference === 'Non-Veg' ? 'bg-red-500/15 text-red-400' :
-                            'bg-yellow-500/15 text-yellow-400'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${
-                              order.eventDetails.foodPreference === 'Veg' ? 'bg-green-500' :
-                              order.eventDetails.foodPreference === 'Non-Veg' ? 'bg-red-500' : 'bg-yellow-500'
-                            }`} />
+                          <span className={`inline-flex items-center gap-1 mt-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${order.eventDetails.foodPreference === 'Veg' ? 'bg-green-500/15 text-green-400' :
+                              order.eventDetails.foodPreference === 'Non-Veg' ? 'bg-red-500/15 text-red-400' :
+                                'bg-yellow-500/15 text-yellow-400'
+                            }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${order.eventDetails.foodPreference === 'Veg' ? 'bg-green-500' :
+                                order.eventDetails.foodPreference === 'Non-Veg' ? 'bg-red-500' : 'bg-yellow-500'
+                              }`} />
                             {order.eventDetails.foodPreference}
                           </span>
                         )}
@@ -239,7 +237,7 @@ const OrderManager = () => {
 
                 <div className="flex flex-row md:flex-col justify-end gap-2 shrink-0">
                   {order.status === 'pending' && (
-                    <button 
+                    <button
                       onClick={() => updateStatus(order._id, 'unfulfilled')}
                       className="flex items-center gap-2 bg-green-500/20 text-green-400 px-4 py-2 rounded-lg hover:bg-green-500/30 transition-all text-sm font-bold"
                     >
@@ -248,7 +246,7 @@ const OrderManager = () => {
                     </button>
                   )}
                   {order.status === 'unfulfilled' && (
-                    <button 
+                    <button
                       onClick={() => updateStatus(order._id, 'preparing delivery')}
                       className="flex items-center gap-2 bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg hover:bg-blue-500/30 transition-all text-sm font-bold"
                     >
@@ -256,7 +254,7 @@ const OrderManager = () => {
                     </button>
                   )}
                   {order.status === 'preparing delivery' && (
-                    <button 
+                    <button
                       onClick={() => updateStatus(order._id, 'delivery')}
                       className="flex items-center gap-2 bg-purple-500/20 text-purple-400 px-4 py-2 rounded-lg hover:bg-purple-500/30 transition-all text-sm font-bold"
                     >
@@ -264,7 +262,7 @@ const OrderManager = () => {
                     </button>
                   )}
                   {order.status === 'delivery' && (
-                    <button 
+                    <button
                       onClick={() => updateStatus(order._id, 'fulfilled')}
                       className="flex items-center gap-2 bg-green-500/20 text-green-400 px-4 py-2 rounded-lg hover:bg-green-500/30 transition-all text-sm font-bold"
                     >
@@ -272,7 +270,7 @@ const OrderManager = () => {
                     </button>
                   )}
                   {order.status !== 'fulfilled' && order.status !== 'cancelled' && (
-                    <button 
+                    <button
                       onClick={() => updateStatus(order._id, 'cancelled')}
                       className="flex items-center gap-2 bg-red-500/20 text-red-400 px-4 py-2 rounded-lg hover:bg-red-500/30 transition-all text-sm font-bold"
                     >
