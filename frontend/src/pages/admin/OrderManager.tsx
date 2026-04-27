@@ -83,22 +83,35 @@ const OrderManager = () => {
 
   const exportToCSV = () => {
     const headers = ['Order ID', 'Customer Name', 'Email', 'Phone', 'Event Date', 'Venue', 'Guests', 'Occasion', 'Food Preference', 'Total Price', 'Status', 'Delivery Address'];
-    const rows = filteredOrders.map(o => [
-      o.orderId,
-      o.customerDetails?.name || 'N/A',
-      o.customerDetails?.email || 'N/A',
-      o.customerDetails?.phone || 'N/A',
-      new Date(o.eventDetails.date).toLocaleDateString(),
-      o.eventDetails.venue,
-      o.eventDetails.guestCount,
-      o.eventDetails.occasion,
-      o.eventDetails.foodPreference || 'Mixed',
-      o.pricing.total,
-      o.status,
-      typeof o.customerDetails?.deliveryAddress === 'object' 
-        ? `${o.customerDetails.deliveryAddress.flatVilla} ${o.customerDetails.deliveryAddress.street} ${o.customerDetails.deliveryAddress.area}`.replace(/,/g, '')
-        : (o.customerDetails?.deliveryAddress || 'N/A').replace(/,/g, '')
-    ]);
+    
+    const rows = filteredOrders.map(o => {
+      // Safely determine the address string to prevent TS "never" error
+      let addressStr = 'N/A';
+      const addr = o.customerDetails?.deliveryAddress;
+
+      if (addr) {
+        if (typeof addr === 'object') {
+          addressStr = `${addr.flatVilla} ${addr.street} ${addr.area}`;
+        } else {
+          addressStr = String(addr);
+        }
+      }
+
+      return [
+        o.orderId,
+        o.customerDetails?.name || 'N/A',
+        o.customerDetails?.email || 'N/A',
+        o.customerDetails?.phone || 'N/A',
+        new Date(o.eventDetails.date).toLocaleDateString(),
+        o.eventDetails.venue,
+        o.eventDetails.guestCount,
+        o.eventDetails.occasion,
+        o.eventDetails.foodPreference || 'Mixed',
+        o.pricing.total,
+        o.status,
+        addressStr.replace(/,/g, '') // Logic moved here where addressStr is guaranteed string
+      ];
+    });
 
     const csvContent = "data:text/csv;charset=utf-8," 
       + headers.join(",") + "\n"
