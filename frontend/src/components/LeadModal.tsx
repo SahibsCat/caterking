@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { API_BASE_URL } from '../config';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Phone, ArrowRight } from 'lucide-react';
 
@@ -40,7 +42,7 @@ const LeadModal: React.FC<LeadModalProps> = ({ onClose }) => {
     
     try {
       // Save to Backend
-      await fetch('http://localhost:5000/api/leads', {
+      await fetch(`${API_BASE_URL}/api/leads`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

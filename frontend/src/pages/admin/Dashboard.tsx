@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../../config';
+
 import { ShoppingBag, TrendingUp, Clock, AlertCircle } from 'lucide-react';
 
 interface Stats {
@@ -16,7 +18,7 @@ const Dashboard = () => {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem('adminToken');
-        const response = await fetch('http://localhost:5000/api/admin/stats', {
+        const response = await fetch(`${API_BASE_URL}/api/admin/stats`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 

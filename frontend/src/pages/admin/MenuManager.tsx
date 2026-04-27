@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../../config';
+
 import { Plus, Edit2, Trash2, Search, Filter } from 'lucide-react';
 
 interface MenuItem {
@@ -45,7 +47,7 @@ const MenuManager = () => {
   const fetchItems = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/admin/menu', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/menu`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -61,7 +63,7 @@ const MenuManager = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('adminToken');
-      const url = isEditing && editingId ? `http://localhost:5000/api/admin/menu/${editingId}` : 'http://localhost:5000/api/admin/menu';
+      const url = isEditing && editingId ? `${API_BASE_URL}/api/admin/menu/${editingId}` : `${API_BASE_URL}/api/admin/menu`;
       const method = isEditing ? 'PUT' : 'POST';
       const response = await fetch(url, {
         method,
@@ -87,7 +89,7 @@ const MenuManager = () => {
   const handleToggleActive = async (item: MenuItem) => {
     try {
       const token = localStorage.getItem('adminToken');
-      await fetch(`http://localhost:5000/api/admin/menu/${item._id}`, {
+      await fetch(`${API_BASE_URL}/api/admin/menu/${item._id}`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...item, is_active: !item.is_active })
@@ -111,7 +113,7 @@ const MenuManager = () => {
     if (!window.confirm('Are you sure you want to delete this menu item?')) return;
     try {
       const token = localStorage.getItem('adminToken');
-      await fetch(`http://localhost:5000/api/admin/menu/${id}`, {
+      await fetch(`${API_BASE_URL}/api/admin/menu/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -124,7 +126,7 @@ const MenuManager = () => {
     if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} items?`)) return;
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/admin/menu/bulk-delete', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/menu/bulk-delete`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -143,7 +145,7 @@ const MenuManager = () => {
     if (selectedIds.length === 0) return;
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/admin/menu/bulk-toggle', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/menu/bulk-toggle`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -248,7 +250,7 @@ const MenuManager = () => {
 
       try {
         const token = localStorage.getItem('adminToken');
-        await fetch('http://localhost:5000/api/admin/menu/bulk', {
+        await fetch(`${API_BASE_URL}/api/admin/menu/bulk`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(bulkItems)

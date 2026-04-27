@@ -3,7 +3,7 @@
 This document describes the MongoDB collections and schemas used in the Sahibs Catering application.
 
 ## 1. User Collection
-Stores user profiles and authentication data.
+Stores user profiles and authentication data for admins and customers.
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
@@ -14,14 +14,13 @@ Stores user profiles and authentication data.
 | `role` | Enum | `guest`, `user`, or `admin` (default: `guest`). |
 | `otp` | String | One-time password for login. |
 | `otpExpires`| Date | Expiration time for the OTP. |
-| `socialProvider`| Object | Fields for `name` and `id` (e.g., Google/Facebook). |
 | `createdAt` | Date | Timestamp of account creation. |
 | `updatedAt` | Date | Timestamp of last update. |
 
 ---
 
 ## 2. MenuItem Collection
-Stores individual food items available for catering.
+Stores individual food items available for catering and meal boxes.
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
@@ -31,6 +30,8 @@ Stores individual food items available for catering.
 | `weight_ratio_per_10_guests` | Number | Multiplier for portion calculation (e.g., `1` = 1kg per 10 guests). |
 | `dietary_tag`| Enum | `Veg`, `Non-Veg`, or `Mixed` (required). |
 | `category` | String | e.g., 'Main Course', 'Starter', 'Rice', 'Dessert'. |
+| `packages` | String[] | Specific tiers this item belongs to (e.g., `Standard`, `Premium`). |
+| `occasions` | String[] | Specific occasions this item is suggested for. |
 | `image` | String | URL to the item image. |
 | `is_active` | Boolean | Whether the item is available for selection. |
 
@@ -56,33 +57,68 @@ Stores customer bookings and pricing details.
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `orderId` | String | Unique human-readable order ID. |
+| `orderId` | String | Unique human-readable order ID (e.g., ORD-171...). |
 | `userId` | ObjectId | Reference to the `User` who placed the order. |
-| `eventDetails`| Object | `venue` (Dubai/Sharjah), `date`, `guestCount`, `serviceType`. |
+| `eventDetails`| Object | `venue`, `date`, `guestCount`, `occasion`, `foodPreference`, `serviceType`. |
 | `packageId` | ObjectId | Reference to the selected `Package`. |
 | `selectedMenu`| Array | List of items with `itemId`, `name`, `category`, and `calculatedWeight`. |
-| `additionalChoices`| Array | Extra items with `name`, `quantity`, and `price`. |
+| `customerDetails`| Object | `name`, `email`, `phone`, `deliveryAddress` (flatVilla, street, area, landmark). |
 | `pricing` | Object | `foodCost`, `serviceCost`, `transportCost`, `vat`, `total`. |
-| `status` | Enum | `pending`, `paid`, `confirmed`, `delivered`, `cancelled`. |
+| `status` | Enum | `pending`, `confirmed`, `unfulfilled`, `preparing delivery`, `delivery`, `fulfilled`, `cancelled`. |
 | `paymentIntentId`| String | Stripe payment identifier. |
 
 ---
 
-## 5. MealPack Collection
-Stores special boxed meal options.
+## 5. Lead Collection
+Stores potential customer data captured before or during the booking flow.
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `name` | String | Name of the meal pack. |
-| `type` | Enum | `Adult`, `Snack`, or `Kids` (required). |
-| `price` | Number | Fixed price for the pack. |
-| `items` | String[]| List of items included in the pack. |
+| `name` | String | Name of the lead (required). |
+| `mobile` | String | Contact number (required). |
+| `email` | String | Email address. |
+| `source` | String | Origin of the lead (e.g., `initial_popup`, `booking_flow`). |
+| `address` | Object | `flatVilla`, `street`, `area`, `landmark`. |
+
+---
+
+## 6. AvailableDate Collection
+Manages booking availability for specific calendar dates.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `date` | Date | The specific date (unique). |
+| `is_active` | Boolean | Whether booking is allowed on this date. |
+
+---
+
+## 7. OccasionMenu Collection
+Maps specific occasions to recommended menu items for each package tier.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `occasion` | String | Name of the occasion (e.g., `Wedding`). |
+| `package` | Enum | `Standard`, `Premium`, or `Elite`. |
+| `items` | Array | Objects with `itemId` and `defaultQuantity`. |
+| `basePrice` | Number | Optional price override for this specific occasion menu. |
+| `is_active` | Boolean | Whether this preset is active. |
+
+---
+
+## 8. MealBoxMenu Collection
+Defines item selections for different meal box types and tiers.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `boxType` | Enum | `Adult`, `Kids`, or `Snack`. |
+| `package` | Enum | `Standard`, `Premium`, or `Elite`. |
+| `items` | Array | Objects with `itemId` and `defaultQuantity`. |
 | `is_active` | Boolean | Availability status. |
 
 ---
 
-## 6. ServiceConfig Collection
-Stores dynamic key-value settings for the application.
+## 9. ServiceConfig Collection
+Stores global system settings and fee configurations.
 
 | Field | Type | Description |
 | :--- | :--- | :--- |

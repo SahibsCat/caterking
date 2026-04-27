@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../../config';
+
 import { Plus, Edit2, Trash2, Search, Layers, Download } from 'lucide-react';
 
 interface MenuItem {
@@ -47,8 +49,9 @@ const OccasionMenuManager = () => {
     try {
       const token = localStorage.getItem('adminToken');
       const [menusRes, itemsRes] = await Promise.all([
-        fetch('http://localhost:5000/api/admin/occasion-menus', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('http://localhost:5000/api/admin/menu', { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(`${API_BASE_URL}/api/admin/occasion-menus`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/api/admin/menu`, { headers: { 'Authorization': `Bearer ${token}` } })
+
       ]);
       setMenus(await menusRes.json());
       setMenuItems(await itemsRes.json());
@@ -63,7 +66,7 @@ const OccasionMenuManager = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('adminToken');
-      const url = isEditing && editingId ? `http://localhost:5000/api/admin/occasion-menus/${editingId}` : 'http://localhost:5000/api/admin/occasion-menus';
+      const url = isEditing && editingId ? `${API_BASE_URL}/api/admin/occasion-menus/${editingId}` : `${API_BASE_URL}/api/admin/occasion-menus`;
       const method = isEditing ? 'PUT' : 'POST';
       const response = await fetch(url, {
         method,
@@ -98,7 +101,7 @@ const OccasionMenuManager = () => {
     if (!window.confirm('Are you sure you want to delete this menu group?')) return;
     try {
       const token = localStorage.getItem('adminToken');
-      await fetch(`http://localhost:5000/api/admin/occasion-menus/${id}`, {
+      await fetch(`${API_BASE_URL}/api/admin/occasion-menus/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -166,7 +169,7 @@ const OccasionMenuManager = () => {
 
       try {
         const token = localStorage.getItem('adminToken');
-        await fetch('http://localhost:5000/api/admin/occasion-menus/bulk', {
+        await fetch(`${API_BASE_URL}/api/admin/occasion-menus/bulk`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(bulkData)

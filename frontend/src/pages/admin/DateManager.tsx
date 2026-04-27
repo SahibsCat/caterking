@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../../config';
+
 import { Calendar as CalendarIcon, Trash2, Plus } from 'lucide-react';
 
 interface AvailableDate {
@@ -21,7 +23,7 @@ const DateManager = () => {
   const fetchDates = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/admin/available-dates', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/available-dates`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -39,7 +41,7 @@ const DateManager = () => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/admin/available-dates', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/available-dates`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -66,7 +68,7 @@ const DateManager = () => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/admin/available-dates/bulk', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/available-dates/bulk`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -92,7 +94,7 @@ const DateManager = () => {
     if (!window.confirm('Are you sure you want to delete this available date?')) return;
     try {
       const token = localStorage.getItem('adminToken');
-      await fetch(`http://localhost:5000/api/admin/available-dates/${id}`, {
+      await fetch(`${API_BASE_URL}/api/admin/available-dates/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -106,7 +108,7 @@ const DateManager = () => {
     if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} selected dates?`)) return;
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/admin/available-dates/bulk-delete', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/available-dates/bulk-delete`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config';
+
 import { ShoppingBag, PhoneCall } from 'lucide-react';
 
 const mealPacksData = [
@@ -76,7 +78,7 @@ const MealPacks = () => {
 
   const fetchAvailableDates = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/available-dates');
+      const res = await fetch(`${API_BASE_URL}/api/available-dates`);
       const data = await res.json();
       setAvailableDates(data);
     } catch (err) {
@@ -86,7 +88,7 @@ const MealPacks = () => {
 
   const fetchPackItems = async (id: number, type: string, pkg: string) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/meal-box-menu?type=${type}&package=${pkg}`);
+      const res = await fetch(`${API_BASE_URL}/api/meal-box-menu?type=${type}&package=${pkg}`);
       if (res.ok) {
         const data = await res.json();
         setPackItems(prev => ({ ...prev, [id]: data.items.map((i: any) => ({ name: i.itemId.name, dietary_tag: i.itemId.dietary_tag || 'Mixed' })) }));
@@ -167,7 +169,7 @@ const MealPacks = () => {
         status: 'pending'
       };
 
-      const response = await fetch('http://localhost:5000/api/orders', {
+      const response = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderPayload)

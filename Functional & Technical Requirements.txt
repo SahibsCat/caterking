@@ -376,12 +376,30 @@ Home → Meal Packs → Add → Checkout → Payment
 # **11\. 🔥 IMPORTANT FEATURES (DON'T MISS)**
 
 ✔ Live price update  
-✔ Menu customization  
+✔ Menu customization (Smart Replace)  
 ✔ Minimum guest validation  
 ✔ Package-based filtering  
 ✔ Stripe integration  
 ✔ Mobile responsive  
-✔ Admin control
+✔ Admin control  
+✔ **Smart Occasion Logic**: Automated menu loading based on event type.  
+✔ **Lead Tracking**: Captures potential customer data before booking completion.  
+✔ **Tiered Meal Boxes**: Full selection system for boxed meals.  
+
+**Additional Evolved Requirements**
+
+1. Smart Menu Logic
+- **Occasion Defaults**: When a user selects an occasion (e.g., Wedding) and a tier (e.g., Elite), the system pre-fills the cart with a chef-recommended menu.
+- **Category-Safe Replacement**: Users can replace any recommended item, but only with another item from the same category and permitted tier, ensuring package consistency.
+
+2. Lead & Availability Management
+- **Early Capture**: Customer name and mobile are captured and stored as a "Lead" as soon as they are entered, allowing for follow-up on abandoned carts.
+- **Dynamic Availability**: The booking calendar only shows dates marked as "Active" in the Admin Date Manager, preventing overbooking.
+
+3. Automated Scaling & Pricing
+- **Weight Calculation**: Backend automatically calculates required kg/units based on guest count and item-specific weight ratios.
+- **Service Allocation**: Staffing requirements (Waiters/Supervisors) are automatically calculated based on the guest count and service type selected.
+
 
 **Additional Requirements**
 

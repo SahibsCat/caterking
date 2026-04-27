@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../../config';
+
 import { Plus, Edit2, Trash2, Search, Layers, Download } from 'lucide-react';
 
 interface MenuItem {
@@ -45,8 +47,9 @@ const MealBoxMenuManager = () => {
     try {
       const token = localStorage.getItem('adminToken');
       const [menusRes, itemsRes] = await Promise.all([
-        fetch('http://localhost:5000/api/admin/meal-box-menus', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('http://localhost:5000/api/admin/menu', { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(`${API_BASE_URL}/api/admin/meal-box-menus`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/api/admin/menu`, { headers: { 'Authorization': `Bearer ${token}` } })
+
       ]);
       setMenus(await menusRes.json());
       setMenuItems(await itemsRes.json());
@@ -61,7 +64,7 @@ const MealBoxMenuManager = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('adminToken');
-      const url = isEditing && editingId ? `http://localhost:5000/api/admin/meal-box-menus/${editingId}` : 'http://localhost:5000/api/admin/meal-box-menus';
+      const url = isEditing && editingId ? `${API_BASE_URL}/api/admin/meal-box-menus/${editingId}` : `${API_BASE_URL}/api/admin/meal-box-menus`;
       const method = isEditing ? 'PUT' : 'POST';
       const response = await fetch(url, {
         method,
@@ -95,7 +98,7 @@ const MealBoxMenuManager = () => {
     if (!window.confirm('Are you sure you want to delete this meal box group?')) return;
     try {
       const token = localStorage.getItem('adminToken');
-      await fetch(`http://localhost:5000/api/admin/meal-box-menus/${id}`, {
+      await fetch(`${API_BASE_URL}/api/admin/meal-box-menus/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -162,7 +165,7 @@ const MealBoxMenuManager = () => {
 
       try {
         const token = localStorage.getItem('adminToken');
-        await fetch('http://localhost:5000/api/admin/meal-box-menus/bulk', {
+        await fetch(`${API_BASE_URL}/api/admin/meal-box-menus/bulk`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(bulkData)

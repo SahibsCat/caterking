@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { API_BASE_URL } from '../config';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Check, Info } from 'lucide-react';
 
@@ -44,12 +46,12 @@ const BookingFlow = () => {
   const [availableDates, setAvailableDates] = useState<{ _id: string, date: string }[]>([]);
   
   useEffect(() => {
-    fetch('http://localhost:5000/api/available-dates')
+    fetch(`${API_BASE_URL}/api/available-dates`)
       .then(res => res.json())
       .then(data => setAvailableDates(data))
       .catch(console.error);
 
-    fetch('http://localhost:5000/api/menu')
+    fetch(`${API_BASE_URL}/api/menu`)
       .then(res => res.json())
       .then(data => {
                 const mapped = data.map((d: any) => ({
@@ -95,7 +97,7 @@ const BookingFlow = () => {
   // Fetch Default Menu for Occasion/Package
   useEffect(() => {
     if (formData.occasion && formData.package) {
-      fetch(`http://localhost:5000/api/occasion-menu?occasion=${formData.occasion}&package=${formData.package}`)
+      fetch(`${API_BASE_URL}/api/occasion-menu?occasion=${formData.occasion}&package=${formData.package}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
           if (data && !isCustomizing) {
@@ -239,7 +241,7 @@ const BookingFlow = () => {
 
     try {
       // Create a Lead as well when booking is confirmed
-      fetch('http://localhost:5000/api/leads', {
+      fetch(`${API_BASE_URL}/api/leads`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -282,7 +284,7 @@ const BookingFlow = () => {
         status: 'pending'
       };
       
-      const response = await fetch('http://localhost:5000/api/orders', {
+      const response = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
