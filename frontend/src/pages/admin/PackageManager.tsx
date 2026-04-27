@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 
 interface MealPack {
   _id: string;
@@ -35,7 +36,7 @@ const PackageManager = () => {
   const fetchPacks = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/admin/packages', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/packages`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -51,7 +52,7 @@ const PackageManager = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('adminToken');
-      const url = isEditing && editingId ? `http://localhost:5000/api/admin/packages/${editingId}` : 'http://localhost:5000/api/admin/packages';
+      const url = isEditing && editingId ? `${API_BASE_URL}/api/admin/packages/${editingId}` : `${API_BASE_URL}/api/admin/packages`;
       const method = isEditing ? 'PUT' : 'POST';
       
       const payload = {
@@ -98,7 +99,7 @@ const PackageManager = () => {
     if (!window.confirm('Are you sure you want to delete this pack?')) return;
     try {
       const token = localStorage.getItem('adminToken');
-      await fetch(`http://localhost:5000/api/admin/packages/${id}`, {
+      await fetch(`${API_BASE_URL}/api/admin/packages/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -109,7 +110,7 @@ const PackageManager = () => {
   const handleToggleActive = async (pack: MealPack) => {
     try {
       const token = localStorage.getItem('adminToken');
-      await fetch(`http://localhost:5000/api/admin/packages/${pack._id}`, {
+      await fetch(`${API_BASE_URL}/api/admin/packages/${pack._id}`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...pack, is_active: !pack.is_active })
@@ -123,7 +124,7 @@ const PackageManager = () => {
     if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} packages?`)) return;
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/admin/packages/bulk-delete', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/packages/bulk-delete`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -142,7 +143,7 @@ const PackageManager = () => {
     if (selectedIds.length === 0) return;
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:5000/api/admin/packages/bulk-toggle', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/packages/bulk-toggle`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,

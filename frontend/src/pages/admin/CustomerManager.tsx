@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { User, Calendar, Phone, Mail, MapPin, Download } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 
 interface Lead {
   _id: string;
@@ -30,7 +31,7 @@ const CustomerManager = () => {
     try {
       const token = localStorage.getItem('adminToken');
       // The API handles date filtering on the server if query params are provided
-      let url = 'http://localhost:5000/api/admin/leads';
+      let url = `${API_BASE_URL}/api/admin/leads`;
       if (startDate && endDate) {
         url += `?startDate=${startDate}&endDate=${endDate}`;
       }
