@@ -44,13 +44,22 @@ const OrderManager = () => {
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${API_BASE_URL}/api/admin/orders`, {
+      const url = `${API_BASE_URL}/api/admin/orders`;
+      console.log('Fetching orders from:', url);
+      
+      const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       setOrders(data);
-    } catch (err) {
-      console.error('Failed to fetch orders');
+    } catch (err: any) {
+      console.error('Failed to fetch orders:', err);
+      // Optional: Add some UI feedback for error
     } finally {
       setLoading(false);
     }

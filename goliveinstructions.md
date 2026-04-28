@@ -2,6 +2,36 @@
 
 ---
 
+## 🚀 NEW: Unified Deployment (Fixes Admin Panel Issues)
+**Follow these steps to host your entire application (Frontend + Backend) on a single Render URL.** This resolves "Cannot GET /admin" issues and simplifies management.
+
+### 1. Update Render Web Service Settings
+1. Log in to [Render.com](https://render.com) and click on your **Backend** (Web Service).
+2. Go to the **Settings** tab:
+   - **Root Directory**: Delete `backend` and leave it **BLANK**.
+   - **Build Command**: 
+     ```bash
+     cd frontend && npm install && npm run build && cd ../backend && npm install && npm run build
+     ```
+   - **Start Command**: 
+     ```bash
+     node backend/dist/index.js
+     ```
+3. Go to the **Environment** tab:
+   - Add/Update `NODE_ENV`: `production`
+   - **Delete** `VITE_API_URL` if it exists (the app will now use relative paths).
+4. Click **Manual Deploy** > **Clear Build Cache & Deploy**.
+
+### 2. Deactivate the Old Frontend Service
+Since the Backend now serves the Frontend, you can delete or suspend the separate "Static Site" service to save resources and avoid confusion.
+
+### 3. Verify Admin Access
+Once live, your site and admin panel will both be at the SAME URL:
+- **Website**: `https://caterking.onrender.com/`
+- **Admin**: `https://caterking.onrender.com/admin/login`
+
+---
+
 ## 📅 UPDATE: April 26, 2026 - Critical Fixes & Admin Setup
 **Follow these steps if you have already attempted deployment yesterday and need to apply the latest fixes.**
 

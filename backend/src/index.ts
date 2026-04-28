@@ -4,6 +4,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import mongoose from 'mongoose';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import orderRoutes from './routes/orderRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
@@ -39,6 +44,20 @@ app.use('/api/admin', adminRoutes);
 
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'OK', message: 'Cater King API is running' });
+});
+
+// Serve Static Files in Production
+const frontendDistPath = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendDistPath));
+
+// Catch-all route for SPA
+app.get('*', (req: Request, res: Response) => {
+  // If it's an API request that wasn't caught, return 404
+  if (req.url.startsWith('/api')) {
+    return res.status(404).json({ message: 'API route not found' });
+  }
+  // Otherwise serve the frontend
+  res.sendFile(path.join(frontendDistPath, 'index.html'));
 });
 
 const startServer = async () => {
