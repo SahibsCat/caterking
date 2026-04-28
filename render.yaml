@@ -1,0 +1,38 @@
+services:
+  # Backend Web Service
+  - type: web
+    name: caterking-backend
+    env: node
+    plan: free
+    region: singapore
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        sync: false # Set in Render Dashboard
+      - key: JWT_SECRET
+        sync: false # Set in Render Dashboard
+
+  # Frontend Static Site
+  - type: static
+    name: caterking-frontend
+    env: static
+    plan: free
+    region: singapore
+    buildCommand: cd frontend && npm install && npm run build
+    publishPath: frontend/dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://caterking.onrender.com # Change to your backend URL
