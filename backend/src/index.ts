@@ -50,8 +50,8 @@ app.get('/health', (req: Request, res: Response) => {
 const frontendDistPath = path.join(__dirname, '../../frontend/dist');
 app.use(express.static(frontendDistPath));
 
-// Catch-all route for SPA
-app.get('/:path*', (req: Request, res: Response) => {
+// Catch-all for SPA
+app.use((req: Request, res: Response) => {
   // If it's an API request that wasn't caught, return 404
   if (req.url.startsWith('/api')) {
     return res.status(404).json({ message: 'API route not found' });
