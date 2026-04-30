@@ -4,6 +4,8 @@ import BookingFlow from './pages/BookingFlow';
 import MealPacks from './pages/MealPacks';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import About from './pages/About';
+import Policies from './pages/Policies';
 
 // Admin Pages
 import AdminLayout from './components/AdminLayout';
@@ -32,6 +34,8 @@ function App() {
           <Route path="/" element={<><Header /><main><Home /></main><Footer /></>} />
           <Route path="/book" element={<><Header /><main><BookingFlow /></main><Footer /></>} />
           <Route path="/meal-packs" element={<><Header /><main><MealPacks /></main><Footer /></>} />
+          <Route path="/about" element={<><Header /><main><About /></main><Footer /></>} />
+          <Route path="/policies" element={<><Header /><main><Policies /></main><Footer /></>} />
 
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />

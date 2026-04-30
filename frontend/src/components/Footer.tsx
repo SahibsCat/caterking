@@ -1,4 +1,5 @@
 import { ChefHat, Mail, Phone, Globe } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   return (
@@ -18,12 +19,12 @@ const Footer = () => {
         <div>
           <h4 className="text-lg font-bold mb-6">Support Links</h4>
           <ul className="space-y-4 text-gray-400">
-            <li><a href="https://sahibs.ae/policies/privacy-policy" className="hover:text-tan transition-colors">Privacy Policy</a></li>
-            <li><a href="https://sahibs.ae/policies/refund-policy" className="hover:text-tan transition-colors">Cancellation & Modification Policy</a></li>
-            <li><a href="https://sahibs.ae/policies/terms-of-service" className="hover:text-tan transition-colors">Terms & Conditions</a></li>
-            <li><a href="https://sahibs.ae/policies/shipping-policy" className="hover:text-tan transition-colors">Shipping & Delivery Policy</a></li>
-            <li><a href="https://sahibs.ae/policies/refund-policy" className="hover:text-tan transition-colors">Refund policy</a></li>
-            <li><a href="https://sahibs.ae/policies/terms-of-service" className="hover:text-tan transition-colors">Terms of service</a></li>
+            <li><Link to="/policies#privacy-policy" className="hover:text-tan transition-colors">Privacy Policy</Link></li>
+            <li><Link to="/policies#cancellation-policy" className="hover:text-tan transition-colors">Cancellation & Modification Policy</Link></li>
+            <li><Link to="/policies#terms-of-service" className="hover:text-tan transition-colors">Terms & Conditions</Link></li>
+            <li><Link to="/policies#shipping-policy" className="hover:text-tan transition-colors">Shipping & Delivery Policy</Link></li>
+            <li><Link to="/policies#refund-policy" className="hover:text-tan transition-colors">Refund policy</Link></li>
+            <li><Link to="/policies#terms-of-service" className="hover:text-tan transition-colors">Terms of service</Link></li>
           </ul>
         </div>
 
