@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import LeadModal from '../components/LeadModal';
 import heroImage from '../assets/hero-new.jpg';
+import heroMobileImage from '../assets/hero-mobile.png';
 import cateringTeam from '../assets/caterraja.jpeg';
 import food1 from '../assets/food1.jpeg';
 import food2 from '../assets/food2.jpeg';
@@ -34,7 +35,12 @@ const Home = () => {
           <img
             src={heroImage}
             alt="Luxury Catering"
-            className="w-full h-full object-cover"
+            className="hidden md:block w-full h-full object-cover"
+          />
+          <img
+            src={heroMobileImage}
+            alt="Luxury Catering"
+            className="block md:hidden w-full h-full object-cover"
           />
         </div>
 
