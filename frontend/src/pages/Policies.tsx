@@ -21,7 +21,7 @@ const Policies = () => {
       <div className="max-w-4xl mx-auto bg-richBlack border border-white/10 p-8 rounded-2xl shadow-xl space-y-16">
         
         {/* Privacy Policy */}
-        <section id="privacy-policy">
+        <section id="privacy-policy" className="scroll-mt-32">
           <h2 className="text-3xl font-playfair font-bold text-tan mb-6">Privacy Policy</h2>
           <div className="space-y-4 text-gray-300 font-inter leading-relaxed">
             <p>This privacy policy sets out how Cater King uses and protects any information that you give Cater King when you use this website. Cater King is committed to ensuring that your privacy is protected. Should we ask you to provide certain information by which you can be identified when using this website, and then you can be assured that it will only be used in accordance with this privacy statement. Cater King may change this policy from time to time by updating this page. You should check this page from time to time to ensure that you are happy with any changes</p>
@@ -53,7 +53,7 @@ const Policies = () => {
         </section>
 
         {/* Cancellation & Modification Policy */}
-        <section id="cancellation-policy">
+        <section id="cancellation-policy" className="scroll-mt-32">
           <h2 className="text-3xl font-playfair font-bold text-tan mb-6">Cancellation & Modification Policy</h2>
           <div className="space-y-4 text-gray-300 font-inter leading-relaxed">
             <p>An order placed by the customer can be cancelled only if the request is made at least 24 hours prior to the scheduled delivery time. As all orders are prepared with a minimum 48-hour processing and delivery window, cancellation requests made within 24 hours of delivery will not be accepted.</p>
@@ -64,7 +64,7 @@ const Policies = () => {
         </section>
 
         {/* Refund Policy */}
-        <section id="refund-policy">
+        <section id="refund-policy" className="scroll-mt-32">
           <h2 className="text-3xl font-playfair font-bold text-tan mb-6">Refund Policy</h2>
           <div className="space-y-4 text-gray-300 font-inter leading-relaxed">
             <p>An order placed by the customer can be cancelled only if the request is made at least 24 hours prior to the scheduled delivery time. As all orders are prepared with a minimum 48-hour processing and delivery window, cancellation requests made within 24 hours of delivery will not be accepted.</p>
@@ -74,7 +74,7 @@ const Policies = () => {
         </section>
 
         {/* Shipping & Delivery Policy */}
-        <section id="shipping-policy">
+        <section id="shipping-policy" className="scroll-mt-32">
           <h2 className="text-3xl font-playfair font-bold text-tan mb-6">Shipping & Delivery Policy</h2>
           <div className="space-y-4 text-gray-300 font-inter leading-relaxed">
             <p>Delivery times are estimated and may vary depending on various factors, including but not limited to, traffic conditions and weather.</p>
@@ -84,7 +84,7 @@ const Policies = () => {
         </section>
 
         {/* Terms and Conditions / Terms of Service */}
-        <section id="terms-of-service">
+        <section id="terms-of-service" className="scroll-mt-32">
           <h2 className="text-3xl font-playfair font-bold text-tan mb-6">Terms of Service / Terms & Conditions</h2>
           <div className="space-y-4 text-gray-300 font-inter leading-relaxed">
             <p>The Website Owner, including subsidiaries and affiliates (“Website” or “Website Owner” or “we” or “us” or “our”), provides the information contained on the website or any of the pages comprising the website (“website”) to visitors (“visitors”) (cumulatively referred to as “you” or “your” hereinafter) subject to the terms and conditions set out in these website terms and conditions, the privacy policy and any other relevant terms and conditions, policies and notices which may be applicable to a specific section or module of the website.</p>
