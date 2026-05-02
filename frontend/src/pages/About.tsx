@@ -1,5 +1,3 @@
-import { motion } from 'framer-motion';
-
 const About = () => {
   return (
     <div className="pt-24 pb-20 px-4 min-h-screen">

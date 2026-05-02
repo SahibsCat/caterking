@@ -21,7 +21,7 @@ const Home = () => {
   }, []);
 
   return (
-    <div className="pt"> {/* 👈 pushes everything below fixed header */}
+    <div className="pt-0"> {/* 👈 pushes everything below fixed header */}
 
       {showLeadModal && <LeadModal onClose={() => setShowLeadModal(false)} />}
 
