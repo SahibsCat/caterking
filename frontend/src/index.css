@@ -1,7 +1,13 @@
 @import "tailwindcss";
 
+@theme {
+  --color-richBlack: #4A0000;
+  --color-charcoal: #2D0000;
+  --color-tan: #C9A05C;
+}
+
 :root {
-  background-color: #0A0A0A;
+  background-color: #4A0000;
   color: white;
   font-family: 'Inter', sans-serif;
 }
@@ -23,6 +29,6 @@ main {
 }
 
 select option {
-  background-color: #0A0A0A;
+  background-color: #2D0000;
   color: white;
 }

@@ -335,7 +335,7 @@ const MealPacks = () => {
                         setErrors(errors.filter(err => err !== 'date'));
                     }}
                   >
-                    <option value="" className="bg-[#0A0A0A]">Select Date</option>
+                    <option value="" className="bg-charcoal">Select Date</option>
                     {availableDates
                       .filter(d => {
                         const dateObj = new Date(d.date);
@@ -344,7 +344,7 @@ const MealPacks = () => {
                         return diffHrs >= 24;
                       })
                       .map(d => (
-                        <option key={d._id} value={d.date.split('T')[0]} className="bg-[#0A0A0A]">
+                        <option key={d._id} value={d.date.split('T')[0]} className="bg-charcoal">
                           {new Date(d.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                         </option>
                       ))

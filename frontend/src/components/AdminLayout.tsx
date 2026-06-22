@@ -23,8 +23,8 @@ const AdminLayout = () => {
       {/* Sidebar */}
       <aside className="w-64 bg-charcoal border-r border-white/10 flex flex-col">
         <div className="p-6 flex items-center gap-3 border-b border-white/10">
-          <img src="https://sahibs.ae/cdn/shop/files/DUBAI_UAE_logo-edited.png?v=1723524044&width=114" alt="Cater King Logo" className="h-10 w-10 object-contain rounded-full bg-richBlack border border-white/20" />
-          <span className="text-xl font-playfair font-bold text-tan">Cater King</span>
+          <img src="/logo.jpg" alt="Cater Raja Logo" className="h-10 w-10 object-contain rounded-full bg-richBlack border border-white/20" />
+          <span className="text-xl font-playfair font-bold text-tan">Cater Raja</span>
         </div>
 
         <nav className="flex-1 p-4 flex flex-col gap-2">

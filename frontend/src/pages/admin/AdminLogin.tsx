@@ -46,7 +46,7 @@ const AdminLogin = () => {
             <ChefHat className="text-tan w-12 h-12" />
           </div>
           <h1 className="text-3xl font-playfair font-bold text-white">Admin Login</h1>
-          <p className="text-gray-400">Access the Cater King dashboard</p>
+          <p className="text-gray-400">Access the Cater Raja dashboard</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -64,7 +64,7 @@ const AdminLogin = () => {
                 type="email"
                 required
                 className="w-full bg-richBlack border border-white/10 rounded-lg py-3 pl-10 pr-4 focus:ring-2 focus:ring-tan focus:outline-none transition-all"
-                placeholder="admin@caterking.com"
+                placeholder="admin@caterraja.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />

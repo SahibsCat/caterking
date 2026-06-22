@@ -70,7 +70,7 @@ To ensure the admin is created in your **Live Database (Atlas)** and not just lo
 The booking page will show an empty dropdown until you "Activate" some dates in the Admin panel.
 1. Open your website and go to `/admin/login` (e.g., `https://your-site.onrender.com/admin/login`).
 2. **Log in** with:
-   - **Email**: `admin@caterking.com`
+   - **Email**: `admin@caterraja.com`
    - **Password**: `AdminPassword1234!`
 3. Go to the **"Delivery Dates"** tab.
 4. Add at least 5-10 upcoming dates (e.g., tomorrow and the next few days).
@@ -128,7 +128,7 @@ If you are starting with a fresh database or need to reset the admin user:
    npm run seed:admin
    ```
    **Default Credentials:**
-   - **Email:** `admin@caterking.com`
+   - **Email:** `admin@caterraja.com`
    - **Password:** `AdminPassword1234!`
 3. **Seed Default Menu (Optional)**:
    If your menu is empty, run:
@@ -183,7 +183,7 @@ Add the following in the **Environment** tab:
 ## 5. Launching the Admin Module
 
 1. **URL**: Go to `https://your-frontend-url.onrender.com/admin/login`.
-2. **Login**: Use the seeded credentials (`admin@caterking.com` / `AdminPassword1234!`).
+2. **Login**: Use the seeded credentials (`admin@caterraja.com` / `AdminPassword1234!`).
 3. **Configure Dates**: Go to **Delivery Dates** and add available dates for your service. **Without this, the booking dropdown will be empty.**
 4. **Manage Menu**: Use the **Menu Management** tab to activate/deactivate dishes.
 

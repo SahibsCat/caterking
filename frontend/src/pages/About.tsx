@@ -6,10 +6,10 @@ const About = () => {
         
         <div className="space-y-6 text-gray-300 font-inter leading-relaxed">
           <p className="text-xl">
-            <strong>Cater King – Your Complete Catering Solution, Simplified</strong>
+            <strong>Cater Raja – Your Complete Catering Solution, Simplified</strong>
           </p>
           <p>
-            Planning a party, corporate event or daily meal service should be exciting—not stressful. Cater king is a smart, end-to-end catering platform designed to make ordering food for any occasion seamless, customizable, and efficient.
+            Planning a party, corporate event or daily meal service should be exciting—not stressful. Cater Raja is a smart, end-to-end catering platform designed to make ordering food for any occasion seamless, customizable, and efficient.
           </p>
           <p>
             Whether you're hosting an intimate house party, organizing a corporate gathering, or setting up recurring meal plans, our platform gives you complete control—from menu creation to budget planning—all in one place.

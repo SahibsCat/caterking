@@ -47,7 +47,7 @@ const Dashboard = () => {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-playfair font-bold text-white mb-2">Business Overview</h1>
-        <p className="text-gray-400">Real-time performance metrics for Cater King</p>
+        <p className="text-gray-400">Real-time performance metrics for Cater Raja</p>
       </div>
 
       {error && (

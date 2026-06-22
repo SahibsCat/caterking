@@ -65,7 +65,7 @@ const Home = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link
                 to="/book"
-                className="w-full sm:w-auto bg-[#B99272] text-white flex items-center justify-center gap-2 px-8 py-4 rounded-full text-lg font-bold hover:scale-105 transition-transform shadow-[0_0_40px_rgba(185,146,114,0.4)]"
+                className="w-full sm:w-auto bg-[#C9A05C] text-[#4A0000] flex items-center justify-center gap-2 px-8 py-4 rounded-full text-lg font-bold hover:scale-105 transition-transform shadow-[0_0_40px_rgba(201,160,92,0.4)]"
               >
                 Start Booking <ArrowRight size={20} />
               </Link>
@@ -121,11 +121,11 @@ const Home = () => {
           <div className="pl-0 lg:pl-8">
             <h2 className="text-sm font-bold text-tan tracking-[0.2em] uppercase mb-4">About</h2>
             <h3 className="text-4xl md:text-5xl font-playfair font-bold text-white mb-6 leading-tight">
-              Cater King – Your Complete Catering Solution, Simplified
+              Cater Raja – Your Complete Catering Solution, Simplified
             </h3>
             <div className="space-y-6 text-gray-300 font-inter leading-relaxed text-lg">
               <p>
-                Planning a party, corporate event or daily meal service should be exciting—not stressful. Cater king is a smart, end-to-end catering platform designed to make ordering food for any occasion seamless, customizable, and efficient.
+                Planning a party, corporate event or daily meal service should be exciting—not stressful. Cater Raja is a smart, end-to-end catering platform designed to make ordering food for any occasion seamless, customizable, and efficient.
               </p>
               <p>
                 Whether you're hosting an intimate house party, organizing a corporate gathering, or setting up recurring meal plans, our platform gives you complete control—from menu creation to budget planning—all in one place.
@@ -133,7 +133,7 @@ const Home = () => {
             </div>
             <Link
               to="/about"
-              className="mt-10 inline-flex items-center gap-2 bg-[#B99272] text-richBlack px-8 py-3 rounded-full hover:bg-[#A67F5F] transition-all font-bold w-fit"
+              className="mt-10 inline-flex items-center gap-2 bg-[#C9A05C] text-richBlack px-8 py-3 rounded-full hover:bg-[#B58E4E] transition-all font-bold w-fit"
             >
               Read More <ArrowRight size={20} />
             </Link>

@@ -43,7 +43,7 @@ app.use('/api/admin', adminRoutes);
 
 
 app.get('/health', (req: Request, res: Response) => {
-  res.json({ status: 'OK', message: 'Cater King API is running' });
+  res.json({ status: 'OK', message: 'Cater Raja API is running' });
 });
 
 // Serve Static Files in Production

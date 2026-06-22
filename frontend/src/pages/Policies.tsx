@@ -24,7 +24,7 @@ const Policies = () => {
         <section id="privacy-policy" className="scroll-mt-32">
           <h2 className="text-3xl font-playfair font-bold text-tan mb-6">Privacy Policy</h2>
           <div className="space-y-4 text-gray-300 font-inter leading-relaxed">
-            <p>This privacy policy sets out how Cater King uses and protects any information that you give Cater King when you use this website. Cater King is committed to ensuring that your privacy is protected. Should we ask you to provide certain information by which you can be identified when using this website, and then you can be assured that it will only be used in accordance with this privacy statement. Cater King may change this policy from time to time by updating this page. You should check this page from time to time to ensure that you are happy with any changes</p>
+            <p>This privacy policy sets out how Cater Raja uses and protects any information that you give Cater Raja when you use this website. Cater Raja is committed to ensuring that your privacy is protected. Should we ask you to provide certain information by which you can be identified when using this website, and then you can be assured that it will only be used in accordance with this privacy statement. Cater Raja may change this policy from time to time by updating this page. You should check this page from time to time to ensure that you are happy with any changes</p>
             <h3 className="text-xl text-white mt-4 font-semibold">We may collect the following information:</h3>
             <ul className="list-disc pl-6 space-y-1">
               <li>Name and job title</li>
@@ -59,7 +59,7 @@ const Policies = () => {
             <p>An order placed by the customer can be cancelled only if the request is made at least 24 hours prior to the scheduled delivery time. As all orders are prepared with a minimum 48-hour processing and delivery window, cancellation requests made within 24 hours of delivery will not be accepted.</p>
             <p>Any eligible refund will be processed within 7 working days to the customer’s original mode of payment.</p>
             <p>Customers can modify their orders only if the request is made at least 24 hours prior to the scheduled delivery time. Modification requests made within 24 hours of delivery will not be accepted due to preparation constraints.</p>
-            <p>For Cancellation and modification, please contact Cater King customer Care at 054 3344555</p>
+            <p>For Cancellation and modification, please contact Cater Raja customer Care at 054 3344555</p>
           </div>
         </section>
 
@@ -69,7 +69,7 @@ const Policies = () => {
           <div className="space-y-4 text-gray-300 font-inter leading-relaxed">
             <p>An order placed by the customer can be cancelled only if the request is made at least 24 hours prior to the scheduled delivery time. As all orders are prepared with a minimum 48-hour processing and delivery window, cancellation requests made within 24 hours of delivery will not be accepted.</p>
             <p>Any eligible refund will be processed within 7 working days to the customer’s original mode of payment.</p>
-            <p>For Cancellation and modification, please contact Cater King customer Care at 054 3344555</p>
+            <p>For Cancellation and modification, please contact Cater Raja customer Care at 054 3344555</p>
           </div>
         </section>
 
@@ -115,7 +115,7 @@ const Policies = () => {
             <h3 className="text-xl text-white mt-4 font-semibold">4. Intellectual Property</h3>
             <p>This website contains material which is owned by or licensed to us. This material includes, but is not limited to, the design, layout, look, appearance, and graphics. Reproduction is prohibited other than in accordance with the copyright notice, which forms part of these terms and conditions.</p>
             <p>All trademarks reproduced in this website which are not the property of, or licensed to, the operator are acknowledged on the website.</p>
-            <p>Unauthorized use of this website may give rise to a claim for damages and/or be a criminal offense. From time to time this website may also include links to other websites. These links are provided for your convenience to provide further information. You may not create a link to this website from another website or document without Cater King LLC's prior written consent.</p>
+            <p>Unauthorized use of this website may give rise to a claim for damages and/or be a criminal offense. From time to time this website may also include links to other websites. These links are provided for your convenience to provide further information. You may not create a link to this website from another website or document without Cater Raja LLC's prior written consent.</p>
 
             <h3 className="text-xl text-white mt-4 font-semibold">5. Disclaimer</h3>
             <ul className="list-disc pl-6 space-y-2">

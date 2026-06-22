@@ -81,7 +81,7 @@ const LeadModal: React.FC<LeadModalProps> = ({ onClose }) => {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
           className="glass-card w-full max-w-md p-8 relative overflow-hidden"
-          style={{ background: 'rgba(15, 15, 15, 0.8)', border: '1px solid rgba(212, 163, 115, 0.2)' }}
+          style={{ background: 'rgba(46, 0, 0, 0.95)', border: '1px solid rgba(201, 160, 92, 0.2)' }}
         >
           {/* Decorative Elements */}
           <div className="absolute -top-24 -right-24 w-48 h-48 bg-tan/10 rounded-full blur-3xl" />
@@ -89,14 +89,14 @@ const LeadModal: React.FC<LeadModalProps> = ({ onClose }) => {
 
           <div className="relative z-10">
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-playfair font-bold text-white mb-2">Welcome to Cater King</h2>
+              <h2 className="text-3xl font-playfair font-bold text-white mb-2">Welcome to Cater Raja</h2>
               <p className="text-gray-400">Experience premium catering tailored just for you.</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                  <User size={16} className="text-[#D4A373]" /> Full Name
+                  <User size={16} className="text-[#C9A05C]" /> Full Name
                 </label>
                 <input 
                   type="text"
@@ -107,7 +107,7 @@ const LeadModal: React.FC<LeadModalProps> = ({ onClose }) => {
                   }}
                   placeholder="Enter your name"
                   className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none transition-colors ${
-                    error && !name ? 'border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : 'border-white/10 focus:border-[#D4A373]/50'
+                    error && !name ? 'border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : 'border-white/10 focus:border-[#C9A05C]/50'
                   }`}
                   autoFocus
                 />
@@ -115,7 +115,7 @@ const LeadModal: React.FC<LeadModalProps> = ({ onClose }) => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                  <Phone size={16} className="text-[#D4A373]" /> Mobile Number
+                  <Phone size={16} className="text-[#C9A05C]" /> Mobile Number
                 </label>
                 <input 
                   type="tel"
@@ -126,7 +126,7 @@ const LeadModal: React.FC<LeadModalProps> = ({ onClose }) => {
                   }}
                   placeholder="054 -- --- ----"
                   className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none transition-colors ${
-                    error && !mobile ? 'border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : 'border-white/10 focus:border-[#D4A373]/50'
+                    error && !mobile ? 'border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : 'border-white/10 focus:border-[#C9A05C]/50'
                   }`}
                 />
               </div>
@@ -143,7 +143,7 @@ const LeadModal: React.FC<LeadModalProps> = ({ onClose }) => {
 
               <button 
                 type="submit"
-                className="w-full bg-[#D4A373] text-[#0A0A0A] font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-[#C39262] transition-colors group shadow-lg shadow-tan/10"
+                className="w-full bg-[#C9A05C] text-[#4A0000] font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-[#B58E4E] transition-colors group shadow-lg shadow-tan/10"
               >
                 Continue <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
               </button>

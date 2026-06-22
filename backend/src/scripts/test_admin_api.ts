@@ -4,11 +4,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const API_URL = 'http://localhost:5000/api';
-const ADMIN_EMAIL = 'admin@caterking.com';
+const ADMIN_EMAIL = 'admin@caterraja.com';
 const ADMIN_PASSWORD = 'admin123';
 
 async function testAdminAPI() {
-  console.log('--- Cater King Admin API Test ---');
+  console.log('--- Cater Raja Admin API Test ---');
 
   try {
     // 1. Admin Login

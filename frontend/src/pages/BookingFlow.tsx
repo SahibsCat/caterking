@@ -424,9 +424,9 @@ const BookingFlow = () => {
                           setErrors(errors.filter(e => e !== 'venue'));
                         }}
                       >
-                        <option value="Dubai" className="bg-[#0A0A0A]">Dubai</option>
-                        <option value="Sharjah" className="bg-[#0A0A0A]">Sharjah</option>
-                        <option value="Ajman" className="bg-[#0A0A0A]">Ajman</option>
+                        <option value="Dubai" className="bg-charcoal">Dubai</option>
+                        <option value="Sharjah" className="bg-charcoal">Sharjah</option>
+                        <option value="Ajman" className="bg-charcoal">Ajman</option>
                       </select>
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
                         <ChevronRight size={20} className="rotate-90" />
@@ -475,7 +475,7 @@ const BookingFlow = () => {
                           setErrors(errors.filter(e => e !== 'date'));
                         }}
                       >
-                        <option value="" className="bg-[#0A0A0A]">Select Available Date</option>
+                        <option value="" className="bg-charcoal">Select Available Date</option>
                         {availableDates
                           .filter(d => {
                             const dateObj = new Date(d.date);
@@ -487,7 +487,7 @@ const BookingFlow = () => {
                             return diffHrs >= requiredHrs;
                           })
                           .map(d => (
-                            <option key={d._id} value={d.date.split('T')[0]} className="bg-[#0A0A0A]">
+                            <option key={d._id} value={d.date.split('T')[0]} className="bg-charcoal">
                               {new Date(d.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                             </option>
                           ))
