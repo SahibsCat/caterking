@@ -1,4 +1,4 @@
-import { ChefHat, Mail, Phone, Globe } from 'lucide-react';
+import { Mail, Phone, Globe } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Footer = () => {
@@ -6,10 +6,9 @@ const Footer = () => {
     <footer className="bg-richBlack border-t border-white/5 py-20">
       <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-12">
         <div className="col-span-1 md:col-span-2">
-          <div className="flex items-center gap-2 mb-6">
-            <ChefHat className="text-tan w-8 h-8" />
-            <span className="text-2xl font-playfair font-bold text-tan">Cater</span>
-            <span className="text-2xl font-playfair font-bold">Raja</span>
+          <div className="flex items-center gap-3 mb-6">
+            <img src="/logo.jpg" alt="Cater Raja" className="h-12 w-12 object-contain rounded-full border border-tan/30 bg-richBlack" />
+            <span className="text-2xl font-playfair font-bold text-tan">Cater <span className="text-white">Raja</span></span>
           </div>
           <p className="text-gray-400 max-w-md leading-relaxed mb-6">
             Elevating your events with unparalleled culinary experiences. Authorized catering partner in Dubai and Sharjah.
