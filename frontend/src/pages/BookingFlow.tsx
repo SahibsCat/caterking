@@ -305,7 +305,7 @@ const BookingFlow = () => {
   const [showInclusionPopup, setShowInclusionPopup] = useState(false);
 
   return (
-    <div className="pt-32 pb-20 px-4 max-w-5xl mx-auto relative">
+    <div className="pt-28 pb-20 px-3 sm:px-4 max-w-5xl mx-auto relative">
       {/* Replacement Modal */}
       <AnimatePresence>
         {isReplaceModalOpen && (
@@ -369,20 +369,20 @@ const BookingFlow = () => {
         )}
       </AnimatePresence>
       {/* Progress Bar */}
-      <div className="flex justify-between mb-12 relative">
-        <div className="absolute top-1/2 left-0 w-full h-1 bg-white/10 -translate-y-1/2 z-0" />
+      <div className="flex justify-between mb-8 sm:mb-12 relative">
+        <div className="absolute top-4 sm:top-5 left-0 w-full h-0.5 bg-white/10 z-0" />
         <div 
-          className="absolute top-1/2 left-0 h-1 bg-tan -translate-y-1/2 z-0 transition-all duration-500" 
+          className="absolute top-4 sm:top-5 left-0 h-0.5 bg-tan z-0 transition-all duration-500" 
           style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
         />
         {steps.map((step, index) => (
           <div key={step} className="relative z-10 flex flex-col items-center">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors duration-500 ${
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm transition-colors duration-500 ${
               index <= currentStep ? 'bg-tan text-richBlack' : 'bg-richBlack border-2 border-white/20 text-white/40'
             }`}>
-              {index < currentStep ? <Check size={20} /> : index + 1}
+              {index < currentStep ? <Check size={14} /> : index + 1}
             </div>
-            <span className={`mt-2 text-sm font-semibold ${index <= currentStep ? 'text-tan' : 'text-white/40'}`}>
+            <span className={`mt-1.5 text-[9px] sm:text-xs font-semibold text-center leading-tight ${index <= currentStep ? 'text-tan' : 'text-white/40'}`}>
               {step}
             </span>
           </div>
@@ -396,7 +396,7 @@ const BookingFlow = () => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.3 }}
-          className="glass-card p-8 md:p-12 min-h-[500px]"
+          className="glass-card p-4 sm:p-8 md:p-12 min-h-[500px]"
         >
           {currentStep === 0 && (
             <div className="space-y-10">
@@ -407,7 +407,7 @@ const BookingFlow = () => {
                 </div>
               </div>
               
-              <div className="bg-white/5 border border-white/10 rounded-3xl p-8 md:p-12 space-y-10 shadow-2xl relative overflow-hidden group hover:border-tan/20 transition-all">
+              <div className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-8 md:p-12 space-y-6 sm:space-y-10 shadow-2xl relative overflow-hidden group hover:border-tan/20 transition-all">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-tan/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-tan/10 transition-all" />
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -436,26 +436,26 @@ const BookingFlow = () => {
 
                   <div className="space-y-4">
                     <label className="block text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] ml-1">Guest Count <span className="text-gray-600 font-normal lowercase tracking-normal">(Min: 10, Step: 5)</span></label>
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-3 sm:gap-6">
                       <button 
                         onClick={() => {
                           const newVal = Math.max(10, formData.guests - 5);
                           setFormData({...formData, guests: newVal});
                         }}
-                        className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-tan hover:text-richBlack hover:border-tan transition-all text-2xl font-light shadow-lg"
+                        className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-tan hover:text-richBlack hover:border-tan transition-all text-xl sm:text-2xl font-light shadow-lg flex-shrink-0"
                       >
                         -
                       </button>
-                      <div className={`flex-1 bg-white/5 border p-4 rounded-2xl text-center font-playfair font-bold text-2xl shadow-inner ${
+                      <div className={`flex-1 bg-white/5 border p-3 sm:p-4 rounded-2xl text-center font-playfair font-bold text-xl sm:text-2xl shadow-inner ${
                         errors.includes('guests') ? 'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'border-white/10'
                       }`}>
-                        {formData.guests} <span className="text-sm font-inter text-gray-500 font-normal uppercase tracking-widest">Guests</span>
+                        {formData.guests} <span className="text-xs sm:text-sm font-inter text-gray-500 font-normal uppercase tracking-widest">Guests</span>
                       </div>
                       <button 
                         onClick={() => {
                           setFormData({...formData, guests: formData.guests + 5});
                         }}
-                        className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-tan hover:text-richBlack hover:border-tan transition-all text-2xl font-light shadow-lg"
+                        className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-tan hover:text-richBlack hover:border-tan transition-all text-xl sm:text-2xl font-light shadow-lg flex-shrink-0"
                       >
                         +
                       </button>
@@ -553,7 +553,7 @@ const BookingFlow = () => {
 
                   <div className="space-y-4">
                     <label className="block text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] ml-1">Food Preference</label>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
                       {['Veg', 'Non-Veg', 'Mixed'].map(pref => (
                         <div 
                           key={pref}
@@ -561,7 +561,7 @@ const BookingFlow = () => {
                             setFormData({...formData, foodPreference: pref as any});
                             setErrors(errors.filter(e => e !== 'foodPreference'));
                           }}
-                          className={`p-4 rounded-2xl cursor-pointer border-2 text-center transition-all flex flex-col items-center justify-center gap-2 group/pref relative overflow-hidden ${
+                          className={`p-3 sm:p-4 rounded-2xl cursor-pointer border-2 text-center transition-all flex flex-col items-center justify-center gap-1.5 sm:gap-2 group/pref relative overflow-hidden ${
                             formData.foodPreference === pref ? 'border-tan bg-tan/10' : 
                             errors.includes('foodPreference') ? 'border-red-500/50 bg-red-500/5' : 'border-white/5 bg-white/5 hover:border-white/10'
                           }`}
@@ -647,7 +647,7 @@ const BookingFlow = () => {
           {currentStep === 2 && (
             <div className="space-y-8">
               {/* Summary at Top */}
-              <div className="bg-white/5 p-8 rounded-2xl border border-tan/20 flex flex-col md:flex-row gap-8 items-center justify-between">
+              <div className="bg-white/5 p-4 sm:p-8 rounded-2xl border border-tan/20 flex flex-col md:flex-row gap-4 sm:gap-8 items-start sm:items-center justify-between">
                 <div>
                   <h3 className="text-2xl font-playfair font-bold mb-2">Live Summary</h3>
                   <div className="flex gap-4 text-sm text-gray-400">
@@ -934,21 +934,21 @@ const BookingFlow = () => {
         </motion.div>
       </AnimatePresence>
 
-      <div className="flex justify-between mt-12">
+      <div className="flex justify-between mt-8 sm:mt-12 gap-3">
         <button 
           onClick={prevStep}
           disabled={currentStep === 0}
-          className={`flex items-center gap-2 px-8 py-4 rounded-full font-bold transition-all ${
-            currentStep === 0 ? 'opacity-0' : 'bg-white/5 hover:bg-white/10'
+          className={`flex items-center gap-2 px-5 sm:px-8 py-3 sm:py-4 rounded-full font-bold transition-all text-sm sm:text-base ${
+            currentStep === 0 ? 'opacity-0 pointer-events-none' : 'bg-white/5 hover:bg-white/10'
           }`}
         >
-          <ChevronLeft size={20} /> Back
+          <ChevronLeft size={18} /> Back
         </button>
         <button 
           onClick={nextStep}
-          className="flex items-center gap-2 bg-tan text-richBlack px-8 py-4 rounded-full font-bold hover:scale-105 transition-all"
+          className="flex items-center gap-2 bg-tan text-richBlack px-5 sm:px-8 py-3 sm:py-4 rounded-full font-bold hover:scale-105 transition-all text-sm sm:text-base"
         >
-          {currentStep === steps.length - 1 ? 'Complete Booking' : 'Continue'} <ChevronRight size={20} />
+          {currentStep === steps.length - 1 ? 'Complete Booking' : 'Continue'} <ChevronRight size={18} />
         </button>
       </div>
     </div>

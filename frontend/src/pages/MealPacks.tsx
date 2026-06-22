@@ -189,9 +189,9 @@ const MealPacks = () => {
   };
 
   return (
-    <div className="pt-32 pb-20 px-4 max-w-7xl mx-auto">
+    <div className="pt-28 pb-20 px-3 sm:px-4 max-w-7xl mx-auto">
       <div className="text-center mb-16">
-        <h1 className="text-5xl font-playfair font-bold mb-4">Meal <span className="text-tan">Packs</span></h1>
+        <h1 className="text-4xl sm:text-5xl font-playfair font-bold mb-4">Meal <span className="text-tan">Packs</span></h1>
         <p className="text-gray-400">Chef-curated boxes for every occasion. Delivered fresh.</p>
       </div>
 
@@ -297,12 +297,12 @@ const MealPacks = () => {
       </div>
 
       {/* Bulk Daily Option Section */}
-      <div className="glass-card p-10 md:p-16 text-center max-w-4xl mx-auto flex flex-col items-center border-tan/20">
+      <div className="glass-card p-6 sm:p-10 md:p-16 text-center max-w-4xl mx-auto flex flex-col items-center border-tan/20">
         <h2 className="text-4xl font-playfair font-bold mb-4">Need Reliable Daily Corporate Catering?</h2>
         <p className="text-gray-400 max-w-2xl mx-auto mb-8 text-lg">
           We provide consistent, high-quality daily meal services tailored to your team’s needs. Flexible menus, on-time delivery, and cost-effective plans designed for long-term partnerships.
         </p>
-        <button className="bg-tan text-richBlack px-10 py-4 rounded-full font-bold text-lg hover:scale-105 transition-transform flex items-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.3)]">
+        <button className="bg-tan text-richBlack px-6 sm:px-10 py-3 sm:py-4 rounded-full font-bold text-base sm:text-lg hover:scale-105 transition-transform flex items-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.3)] text-center">
           <PhoneCall size={20} />
           Contact us today for customized bulk pricing
         </button>
