@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { User, Calendar, Phone, Mail, MapPin, Download } from 'lucide-react';
+import { User, Calendar, Phone, Mail, MapPin, Download, Search } from 'lucide-react';
 import { API_BASE_URL } from '../../config';
+import { motion } from 'framer-motion';
+import { toast } from '../../components/Toast';
 
 interface Lead {
   _id: string;
@@ -22,6 +24,7 @@ const CustomerManager = () => {
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetchLeads();
@@ -30,7 +33,6 @@ const CustomerManager = () => {
   const fetchLeads = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      // The API handles date filtering on the server if query params are provided
       let url = `${API_BASE_URL}/api/admin/leads`;
       if (startDate && endDate) {
         url += `?startDate=${startDate}&endDate=${endDate}`;
@@ -42,7 +44,7 @@ const CustomerManager = () => {
       const data = await response.json();
       setLeads(data);
     } catch (err) {
-      console.error('Failed to fetch leads');
+      toast.error('Failed to load customer profiles');
     } finally {
       setLoading(false);
     }
@@ -80,117 +82,162 @@ const CustomerManager = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    toast.success('Leads list exported to CSV');
   };
 
+  const filteredLeads = leads.filter(l => 
+    l.name.toLowerCase().includes(search.toLowerCase()) || 
+    l.mobile.includes(search) || 
+    (l.email && l.email.toLowerCase().includes(search.toLowerCase()))
+  );
+
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-8 animate-fade-in">
+      {/* Header Panel */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-playfair font-bold text-white mb-2">Customer Leads</h1>
-          <p className="text-gray-400">Captured from initial popup and booking flow</p>
+          <h1 className="text-3xl font-playfair font-bold text-white mb-1.5">Customer Leads</h1>
+          <p className="text-gray-400 text-sm">Review contact data captured from landing page lead capture and standard checkout routes.</p>
         </div>
         <button 
           onClick={exportToCSV}
-          className="bg-tan text-richBlack px-6 py-2 rounded-full font-bold hover:scale-105 transition-all flex items-center gap-2"
+          className="btn btn-secondary btn-sm flex items-center gap-2"
         >
-          <Download size={18} />
-          Export to CSV
+          <Download size={16} /> Export CSV
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-4 bg-charcoal p-6 rounded-xl border border-white/5 items-end">
-        <div className="flex flex-col gap-2 relative">
-          <label className="text-[10px] uppercase font-bold text-gray-500 ml-1">From Date</label>
-          <div className="relative">
+      {/* Date Filter & Search Panel */}
+      <div className="bg-[#2D0000] border border-white/10 rounded-2xl p-4 flex flex-col lg:flex-row gap-4 items-end justify-between shadow-md">
+        <div className="flex flex-col sm:flex-row gap-4 flex-1 w-full lg:w-auto">
+          <div className="relative flex-1">
+            <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1.5 ml-1">Search Leads</label>
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search name, phone, email..."
+                className="w-full bg-[#4A0000]/40 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 focus:ring-2 focus:ring-tan/30 focus:outline-none transition-all placeholder:text-gray-600 text-sm"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] uppercase font-bold text-gray-400 ml-1">From Date</label>
             <input 
               type="date" 
-              className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-tan transition-all text-sm w-48 text-white"
+              className="w-full sm:w-44 bg-[#4A0000]/40 border border-white/10 rounded-xl px-3.5 py-2.5 outline-none focus:border-tan focus:ring-2 focus:ring-tan/15 transition-all text-sm cursor-pointer"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
-        </div>
-        <div className="flex flex-col gap-2 relative">
-          <label className="text-[10px] uppercase font-bold text-gray-500 ml-1">To Date</label>
-          <div className="relative">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] uppercase font-bold text-gray-400 ml-1">To Date</label>
             <input 
               type="date" 
-              className="bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 outline-none focus:border-tan transition-all text-sm w-48 text-white"
+              className="w-full sm:w-44 bg-[#4A0000]/40 border border-white/10 rounded-xl px-3.5 py-2.5 outline-none focus:border-tan focus:ring-2 focus:ring-tan/15 transition-all text-sm cursor-pointer"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
             />
           </div>
+          {(startDate || endDate) && (
+            <button 
+              onClick={() => { setStartDate(''); setEndDate(''); }}
+              className="text-xs text-gray-400 hover:text-white underline underline-offset-4 mb-3 font-semibold self-start sm:self-end"
+            >
+              Reset Filters
+            </button>
+          )}
         </div>
-        <button 
-          onClick={() => { setStartDate(''); setEndDate(''); }}
-          className="mb-2 text-xs text-gray-400 hover:text-white underline underline-offset-4"
-        >
-          Reset Filters
-        </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
+      {/* Leads List Cards */}
+      <div className="space-y-4">
         {loading ? (
-          <div className="text-center py-12 text-gray-500">Loading customers...</div>
-        ) : leads.length === 0 ? (
-          <div className="text-center py-20 bg-charcoal rounded-3xl border border-white/5">
-            <User size={48} className="mx-auto mb-4 text-gray-600" />
-            <p className="text-gray-500">No customer records found</p>
+          <div className="text-center py-16 text-gray-500 italic">
+            <div className="flex items-center justify-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-tan animate-ping" /> Loading customer profiles...
+            </div>
+          </div>
+        ) : filteredLeads.length === 0 ? (
+          <div className="text-center py-20 bg-[#2D0000] border border-white/10 rounded-2xl shadow-xl flex flex-col items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-gray-500 mb-4 border border-white/10">
+              <User size={24} />
+            </div>
+            <p className="text-gray-500 text-sm font-semibold">No lead records matching selected filters</p>
           </div>
         ) : (
-          leads.map(lead => (
-            <div key={lead._id} className="bg-charcoal border border-white/10 rounded-2xl p-6 hover:border-tan/30 transition-all group">
-              <div className="flex flex-col md:flex-row justify-between gap-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8 flex-1">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-tan/10 flex items-center justify-center text-tan">
-                      <User size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg text-white">{lead.name}</h3>
-                      <p className="text-xs text-gray-500 uppercase tracking-widest">{lead.source?.replace('_', ' ')}</p>
-                    </div>
+          filteredLeads.map((lead, idx) => (
+            <motion.div 
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(idx * 0.04, 0.4) }}
+              key={lead._id} 
+              className="bg-[#2D0000] border border-white/10 rounded-2xl p-5 hover:border-tan/30 transition-all shadow-md group"
+            >
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="w-11 h-11 rounded-xl bg-tan/10 flex items-center justify-center text-tan border border-tan/10 shrink-0">
+                    <User size={20} />
                   </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-base text-white truncate">{lead.name}</h3>
+                    <span className="inline-block mt-0.5 text-[9px] font-bold uppercase tracking-widest bg-white/5 border border-white/10 text-gray-400 px-2 py-0.5 rounded">
+                      Source: {lead.source?.replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-gray-400">
-                      <Phone size={16} className="text-tan/60" />
-                      <span className="text-sm font-medium">{lead.mobile}</span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 flex-2 w-full lg:w-auto pt-4 lg:pt-0 border-t lg:border-t-0 border-white/5 text-sm">
+                  {/* Contact Fields */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2.5 text-gray-300">
+                      <Phone size={14} className="text-tan/60 shrink-0" />
+                      <span className="font-medium text-xs text-gray-300">{lead.mobile}</span>
                     </div>
                     {lead.email && (
-                      <div className="flex items-center gap-3 text-gray-400">
-                        <Mail size={16} className="text-tan/60" />
-                        <span className="text-sm font-medium truncate max-w-[200px]">{lead.email}</span>
+                      <div className="flex items-center gap-2.5 text-gray-300">
+                        <Mail size={14} className="text-tan/60 shrink-0" />
+                        <span className="font-medium text-xs text-gray-300 truncate max-w-[180px]">{lead.email}</span>
                       </div>
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-gray-400">
-                      <Calendar size={16} className="text-tan/60" />
-                      <span className="text-sm font-medium">{new Date(lead.createdAt).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}</span>
-                    </div>
+                  {/* Address */}
+                  <div className="space-y-1.5 col-span-1">
+                    {lead.address ? (
+                      <div className="flex items-start gap-2.5 text-gray-300">
+                        <MapPin size={14} className="text-tan/60 shrink-0 mt-0.5" />
+                        <span className="font-medium text-xs text-gray-300 line-clamp-2">
+                          {typeof lead.address === 'string' ? lead.address : 
+                            [lead.address.flatVilla, lead.address.street, lead.address.area].filter(Boolean).join(', ')
+                          }
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-600 italic">No address provided</span>
+                    )}
                   </div>
 
-                  {lead.address && (
-                    <div className="flex items-center gap-3 text-gray-400 md:col-span-1 lg:col-span-1">
-                      <MapPin size={16} className="text-tan/60 shrink-0" />
-                      <span className="text-sm font-medium line-clamp-2">
-                        {typeof lead.address === 'string' ? lead.address : 
-                          [lead.address.flatVilla, lead.address.street, lead.address.area].filter(Boolean).join(', ')
-                        }
+                  {/* Creation Time */}
+                  <div className="space-y-1.5 lg:text-right">
+                    <div className="flex items-center lg:justify-end gap-2 text-gray-500">
+                      <Calendar size={14} className="text-tan/40 shrink-0" />
+                      <span className="font-semibold text-xs text-gray-500">
+                        {new Date(lead.createdAt).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
                       </span>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))
         )}
       </div>

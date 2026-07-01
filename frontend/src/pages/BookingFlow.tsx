@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { API_BASE_URL } from '../config';
-
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Check, Info } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, Info, Sparkles, Star, Loader2, ShieldCheck, ChefHat } from 'lucide-react';
+import { formatAED } from '../utils/currency';
+import SuccessModal from '../components/SuccessModal';
+import { toast } from '../components/Toast';
+import Calendar from '../components/Calendar';
 
 export interface MenuItem {
   id: string;
@@ -16,9 +19,13 @@ export interface MenuItem {
   is_active: boolean;
   quantity?: number;
 }
-import { useEffect, useMemo } from 'react';
 
-const steps = ['Details', 'Package', 'Menu', 'Contact', 'Review'];
+const steps = ['Plan', 'Details'];
+const packageOptions = [
+  { name: 'Standard', price: 120, description: 'Balanced selections for relaxed gatherings and everyday celebrations.' },
+  { name: 'Premium', price: 180, description: 'Elevated menu variety with refined presentation for special events.' },
+  { name: 'Signature', price: 250, description: 'Chef-led premium experience for high-impact occasions.' },
+];
 
 interface IFormData {
   name: string;
@@ -44,17 +51,34 @@ interface IFormData {
 const BookingFlow = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [availableDates, setAvailableDates] = useState<{ _id: string, date: string }[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/api/available-dates`)
-      .then(res => res.json())
-      .then(data => setAvailableDates(data))
-      .catch(console.error);
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [successReferenceId, setSuccessReferenceId] = useState('');
 
-    fetch(`${API_BASE_URL}/api/menu`)
-      .then(res => res.json())
-      .then(data => {
-                const mapped = data.map((d: any) => ({
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadBookingData = async () => {
+      setIsDataLoading(true);
+      try {
+        const [datesResponse, menuResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/available-dates`),
+          fetch(`${API_BASE_URL}/api/menu`)
+        ]);
+
+        if (!datesResponse.ok || !menuResponse.ok) {
+          throw new Error('Failed to load booking data');
+        }
+
+        const datesData = await datesResponse.json();
+        const menuData = await menuResponse.json();
+
+        if (!isMounted) return;
+
+        setAvailableDates(datesData);
+        const mapped = menuData.map((d: any) => ({
           ...d,
           id: d._id,
           dietary: d.dietary_tag,
@@ -64,18 +88,33 @@ const BookingFlow = () => {
           is_active: d.is_active !== undefined ? d.is_active : true
         }));
         setMenuItems(mapped);
-      })
-      .catch(console.error);
+      } catch {
+        if (isMounted) {
+          toast.error('Booking details are still loading. Please refresh if needed.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsDataLoading(false);
+        }
+      }
+    };
+
+    loadBookingData();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const [currentStep, setCurrentStep] = useState(0);
+  const [showBookingPrompt, setShowBookingPrompt] = useState(false);
+  const [bookingPromptStep, setBookingPromptStep] = useState(0);
   const [formData, setFormData] = useState<IFormData>({
     name: localStorage.getItem('leadName') || '',
     mobile: localStorage.getItem('leadMobile') || '',
     venue: 'Dubai',
     date: '',
     guests: 10,
-    package: 'Standard',
+    package: '',
     occasion: 'Birthday Party',
     serviceType: 'Delivery',
     foodPreference: 'Mixed',
@@ -90,7 +129,8 @@ const BookingFlow = () => {
   });
 
   const [isCustomizing, setIsCustomizing] = useState(false);
-  const [showFullMenu, setShowFullMenu] = useState(false);
+  const [isMenuChoiceOpen, setIsMenuChoiceOpen] = useState(false);
+  const [isMenuCustomizerOpen, setIsMenuCustomizerOpen] = useState(false);
   const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
   const [itemToReplace, setItemToReplace] = useState<MenuItem | null>(null);
 
@@ -125,19 +165,8 @@ const BookingFlow = () => {
     return total;
   };
 
-  const categorizedRecommended = useMemo(() => {
-    if (!formData.selectedItems) return {};
-    return formData.selectedItems.reduce((acc: any, item) => {
-        if (!acc[item.category]) acc[item.category] = [];
-        acc[item.category].push(item);
-        return acc;
-    }, {});
-  }, [formData.selectedItems]);
-
-  const handleReplaceItem = (oldItem: MenuItem) => {
-    setItemToReplace(oldItem);
-    setIsReplaceModalOpen(true);
-  };
+  const totalEstimate = useMemo(() => calculateTotalPrice() * 1.05, [calculateTotalPrice, formData.guests, formData.package, formData.selectedItems, isCustomizing]);
+  const selectedMenuCount = useMemo(() => formData.selectedItems.reduce((sum, item) => sum + (item.quantity || 1), 0), [formData.selectedItems]);
 
   const confirmReplacement = (newItem: MenuItem) => {
     if (!itemToReplace) return;
@@ -147,6 +176,7 @@ const BookingFlow = () => {
     }));
     setIsReplaceModalOpen(false);
     setItemToReplace(null);
+    toast.success(`Replaced with ${newItem.name}`);
   };
 
   const [errors, setErrors] = useState<string[]>([]);
@@ -164,10 +194,67 @@ const BookingFlow = () => {
     }, 100);
   };
 
+  const openBookingPrompt = () => {
+    setBookingPromptStep(0);
+    setShowBookingPrompt(true);
+  };
+
+  const goToNextBookingPrompt = () => {
+    if (bookingPromptStep === 0) {
+      if (!formData.venue) {
+        toast.error('Please choose a venue');
+        return;
+      }
+      if (!formData.guests || formData.guests < 10) {
+        toast.error('Please choose at least 10 guests');
+        return;
+      }
+      setBookingPromptStep(1);
+      return;
+    }
+
+    if (bookingPromptStep === 1) {
+      if (!formData.date) {
+        toast.error('Please pick a date');
+        return;
+      }
+      if (!formData.occasion) {
+        toast.error('Please select an occasion');
+        return;
+      }
+      setBookingPromptStep(2);
+      return;
+    }
+
+    if (bookingPromptStep === 2) {
+      if (!formData.serviceType) {
+        toast.error('Please select a service type');
+        return;
+      }
+      if (!formData.foodPreference) {
+        toast.error('Please select a food preference');
+        return;
+      }
+      if (!formData.package) {
+        toast.error('Please choose a package first');
+        return;
+      }
+      setShowBookingPrompt(false);
+      setIsMenuChoiceOpen(true);
+      return;
+    }
+
+    setShowBookingPrompt(false);
+    setIsMenuChoiceOpen(true);
+  };
+
+  const handleContinue = () => {
+    nextStep();
+  };
+
   const nextStep = () => {
     const newErrors: string[] = [];
     
-    // Check Current Step Validation
     if (currentStep === 0) {
       if (!formData.date) newErrors.push('date');
       if (!formData.venue) newErrors.push('venue');
@@ -175,11 +262,8 @@ const BookingFlow = () => {
       if (!formData.occasion) newErrors.push('occasion');
       if (!formData.serviceType) newErrors.push('serviceType');
       if (!formData.foodPreference) newErrors.push('foodPreference');
-    } else if (currentStep === 1) {
       if (!formData.package) newErrors.push('package');
-    } else if (currentStep === 2) {
-      if (formData.selectedItems.length === 0) newErrors.push('menu');
-    } else if (currentStep === 3) {
+    } else if (currentStep === 1) {
       if (!formData.name.trim()) newErrors.push('name');
       else if (!/^[A-Za-z\s]+$/.test(formData.name.trim())) newErrors.push('name_format');
       
@@ -197,6 +281,7 @@ const BookingFlow = () => {
     if (newErrors.length > 0) {
       setErrors(newErrors);
       scrollToError();
+      toast.error('Please resolve validation errors to proceed');
       return;
     }
 
@@ -205,22 +290,17 @@ const BookingFlow = () => {
   };
   const prevStep = () => setCurrentStep((prev: number) => Math.max(prev - 1, 0));
 
-    const handleCompleteBooking = async () => {
-    // Final Validation Check across ALL steps
+  const handleCompleteBooking = async () => {
     const finalErrors: string[] = [];
     
-    // Step 0
     if (!formData.date) finalErrors.push('date');
     if (!formData.venue) finalErrors.push('venue');
     if (!formData.guests || formData.guests < 10) finalErrors.push('guests');
     if (!formData.occasion) finalErrors.push('occasion');
     if (!formData.serviceType) finalErrors.push('serviceType');
     
-    // Step 1 & 2
     if (!formData.package) finalErrors.push('package');
-    if (formData.selectedItems.length === 0) finalErrors.push('menu');
     
-    // Step 3
     if (!formData.name.trim()) finalErrors.push('name');
     if (!formData.mobile.trim()) finalErrors.push('mobile');
     if (!formData.email.trim()) finalErrors.push('email');
@@ -230,17 +310,15 @@ const BookingFlow = () => {
 
     if (finalErrors.length > 0) {
       setErrors(finalErrors);
-      // Jump to the first step with an error
       if (['date', 'venue', 'guests', 'occasion', 'serviceType'].some(e => finalErrors.includes(e))) setCurrentStep(0);
-      else if (finalErrors.includes('package')) setCurrentStep(1);
-      else if (finalErrors.includes('menu')) setCurrentStep(2);
-      else setCurrentStep(3);
+      else if (finalErrors.includes('package')) setCurrentStep(0);
+      else setCurrentStep(1);
       scrollToError();
+      toast.error('Required fields are missing or invalid');
       return;
     }
 
     try {
-      // Create a Lead as well when booking is confirmed
       fetch(`${API_BASE_URL}/api/leads`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -255,7 +333,7 @@ const BookingFlow = () => {
 
       const orderPayload = {
         orderId: `ORD-${Date.now()}`,
-        userId: '60d0fe4f5311236168a109ca', // mock user ID for now since we don't have login, or we should use real ID
+        userId: '60d0fe4f5311236168a109ca',
         eventDetails: {
           venue: formData.venue,
           date: formData.date,
@@ -264,7 +342,7 @@ const BookingFlow = () => {
           foodPreference: formData.foodPreference,
           serviceType: formData.serviceType
         },
-        packageId: '60d0fe4f5311236168a109ca', // also mock
+        packageId: '60d0fe4f5311236168a109ca',
         selectedMenu: formData.selectedItems.map(i => ({
           itemId: i.id,
           name: i.name,
@@ -286,671 +364,565 @@ const BookingFlow = () => {
       
       const response = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderPayload)
       });
       if (response.ok) {
-        alert('Booking successfully placed!');
-        window.location.href = '/';
+        setSuccessReferenceId(orderPayload.orderId);
+        setSuccessMessage(`We will review your request and contact you within 24 hours at ${formData.mobile} to finalize the details and confirm the booking.`);
+        setSuccessModalOpen(true);
       } else {
-        alert('Error placing booking');
+        toast.error('Failed to register catering booking');
       }
     } catch (err) {
-      console.error(err);
+      toast.error('Network failure completing checkouts');
     }
+  };
+
+  const handleModalClose = () => {
+    setSuccessModalOpen(false);
+    window.location.href = '#/';
   };
 
   const [showInclusionPopup, setShowInclusionPopup] = useState(false);
 
   return (
-    <div className="pt-28 pb-20 px-3 sm:px-4 max-w-5xl mx-auto relative">
-      {/* Replacement Modal */}
+    <div className="min-h-screen w-full px-3 pb-10 pt-4 sm:px-4 sm:pt-6 lg:px-6 lg:pt-8 max-w-6xl mx-auto relative animate-fade-in">
       <AnimatePresence>
         {isReplaceModalOpen && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
+          <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => setIsReplaceModalOpen(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="glass-card p-10 max-w-2xl w-full border-tan/30 max-h-[80vh] overflow-y-auto"
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={e => e.stopPropagation()}
+              className="modal-box max-w-2xl p-8 max-h-[80vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-3xl font-playfair font-bold">Replace {itemToReplace?.category}</h3>
-                <button onClick={() => setIsReplaceModalOpen(false)} className="text-gray-500 hover:text-white">✕</button>
+                <div>
+                  <h3 className="text-2xl font-bold font-playfair text-white">Replace {itemToReplace?.category} Selection</h3>
+                  <p className="text-xs text-gray-400 mt-1">Swap your current choice with another available option.</p>
+                </div>
+                <button onClick={() => setIsReplaceModalOpen(false)} className="text-gray-500 hover:text-white p-1">✕</button>
               </div>
-              <p className="text-gray-400 mb-8 font-inter">Swap your current selection with another available dish in the same category.</p>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {menuItems
-                    .filter(i => i.is_active && i.category === itemToReplace?.category)
-                    .filter(i => !i.packages || i.packages.length === 0 || i.packages.includes(formData.package))
-                    .map(item => (
-                        <div 
-                            key={item.id}
-                            onClick={() => confirmReplacement(item)}
-                            className="p-4 rounded-xl border border-white/10 bg-white/5 hover:border-tan cursor-pointer transition-all flex items-center gap-3"
-                        >
-                            <div className={`w-2 h-2 rounded-full ${item.dietary === 'Veg' ? 'bg-green-500' : 'bg-red-500'}`} />
-                            <span className="font-semibold text-sm">{item.name}</span>
-                        </div>
-                    ))
-                }
+                  .filter(i => i.is_active && i.category === itemToReplace?.category)
+                  .filter(i => !i.packages || i.packages.length === 0 || i.packages.includes(formData.package))
+                  .map(item => (
+                    <div
+                      key={item.id}
+                      onClick={() => confirmReplacement(item)}
+                      className="p-4 rounded-xl border border-white/5 bg-white/5 hover:border-tan hover:bg-white/10 cursor-pointer transition-all flex items-center gap-3"
+                    >
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${item.dietary === 'Veg' ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <span className="font-semibold text-sm text-gray-200">{item.name}</span>
+                    </div>
+                  ))}
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* Inclusion Popup */}
+      <AnimatePresence>
+        {isMenuCustomizerOpen && (
+          <div className="modal-overlay" style={{ zIndex: 9995 }} onClick={() => setIsMenuCustomizerOpen(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              onClick={e => e.stopPropagation()}
+              className="modal-box max-w-3xl p-6 sm:p-8 max-h-[90dvh] overflow-y-auto"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-2xl font-bold font-playfair text-white">Customize your menu</h3>
+                  <p className="mt-1 text-sm text-gray-400">Adjust portions, review weight and price impact, and continue when you are happy.</p>
+                </div>
+                <button onClick={() => setIsMenuCustomizerOpen(false)} className="rounded-full border border-white/10 p-2 text-gray-400 transition-colors hover:text-white">✕</button>
+              </div>
+
+              <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr] h-[60vh]">
+                <div className="space-y-3 overflow-y-auto pr-2">
+                  {Array.from(new Set(menuItems.map(i => i.category))).map(cat => (
+                    <div key={cat} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <h4 className="text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-400">{cat}</h4>
+                      <div className="mt-3 space-y-2">
+                        {menuItems.filter(i => i.is_active).filter(i => !i.packages || i.packages.length === 0 || i.packages.includes(formData.package)).filter(i => i.category === cat).filter(i => formData.foodPreference === 'Mixed' ? true : i.dietary === formData.foodPreference).map(item => {
+                          const selectedItem = formData.selectedItems.find((si: MenuItem) => si.id === item.id);
+                          const quantity = selectedItem?.quantity || 0;
+                          return (
+                            <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <p className="text-sm font-semibold text-white">{item.name}</p>
+                                <p className="mt-1 text-[11px] text-gray-400">{formatAED(item.base_price)} / portion • {item.weight_ratio}kg per 10 guests</p>
+                                <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-tan">{item.dietary}</p>
+                              </div>
+                              <div className="flex items-center gap-2 rounded-lg bg-white/5 p-1">
+                                <button type="button" onClick={() => { const current = selectedItem?.quantity || 0; if (current <= 1) { setFormData({ ...formData, selectedItems: formData.selectedItems.filter(i => i.id !== item.id) }); if (!isCustomizing) setIsCustomizing(true); } else { setFormData({ ...formData, selectedItems: formData.selectedItems.map(i => i.id === item.id ? { ...i, quantity: current - 1 } : i) }); if (!isCustomizing) setIsCustomizing(true); } }} className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-lg font-bold text-white">−</button>
+                                <span className="w-5 text-center text-sm font-semibold text-white">{quantity}</span>
+                                <button type="button" onClick={() => { if (selectedItem) { setFormData({ ...formData, selectedItems: formData.selectedItems.map(i => i.id === item.id ? { ...i, quantity: (i.quantity || 1) + 1 } : i) }); } else { setFormData({ ...formData, selectedItems: [...formData.selectedItems, { ...item, quantity: 1 }] }); } if (!isCustomizing) setIsCustomizing(true); }} className="flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-lg font-bold text-white">+</button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 h-fit sticky top-0 flex flex-col max-h-full">
+                  <div className="flex-1 overflow-y-auto pr-2">
+                    <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-tan">Selected menu</h4>
+                  <div className="mt-4 space-y-3 text-sm">
+                    {formData.selectedItems.length > 0 ? formData.selectedItems.map(item => (
+                      <div key={item.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
+                        <div>
+                          <p className="font-semibold text-white">{item.name}</p>
+                          <p className="text-[11px] text-gray-400">x{item.quantity || 1}</p>
+                        </div>
+                        <p className="font-semibold text-white">{formatAED((item.base_price || 0) * (item.quantity || 1) * formData.guests / 10)}</p>
+                      </div>
+                    )) : <p className="text-sm text-gray-500">Pick one or more dishes to build your menu.</p>}
+                  </div>
+                  </div>
+                  <div className="mt-5 rounded-xl border border-tan/20 bg-tan/10 p-4 shrink-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-tan">Estimated menu weight</p>
+                    <p className="mt-2 text-xl font-bold text-white">~{((formData.guests / 10) * formData.selectedItems.reduce((acc, i) => acc + (i.weight_ratio || 1) * (i.quantity || 1), 0)).toFixed(1)} kg</p>
+                    <p className="mt-1 text-xs text-gray-400">This helps us tailor portions for your guest count.</p>
+                  </div>
+                  <button type="button" onClick={() => { if (formData.selectedItems.length === 0) { toast.error('Choose at least one item before continuing'); return; } setIsMenuCustomizerOpen(false); setIsCustomizing(true); setCurrentStep(1); }} className="mt-5 w-full rounded-xl bg-tan px-4 py-3 text-sm font-semibold text-richBlack transition-colors hover:bg-tan/90 shrink-0">Confirm menu & continue</button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isMenuChoiceOpen && (
+          <div className="modal-overlay" style={{ zIndex: 9995 }} onClick={() => setIsMenuChoiceOpen(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              onClick={e => e.stopPropagation()}
+              className="modal-box max-w-md p-6 sm:p-8 text-center max-h-[90dvh] overflow-y-auto"
+            >
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-tan/20 bg-tan/10">
+                <ChefHat className="text-tan" size={24} />
+              </div>
+              <h3 className="mt-4 text-2xl font-bold font-playfair text-white">Continue with this menu?</h3>
+              <p className="mt-2 text-sm leading-6 text-gray-400">Choose to customize the menu or keep the default selection for this package and move on to your details.</p>
+              <div className="mt-6 flex flex-col gap-3">
+                <button type="button" onClick={() => { setIsMenuChoiceOpen(false); setIsMenuCustomizerOpen(true); }} className="rounded-xl bg-tan px-4 py-3 text-sm font-semibold text-richBlack transition-colors hover:bg-tan/90">Customize menu</button>
+                <button type="button" onClick={() => { setIsMenuChoiceOpen(false); setIsCustomizing(false); setCurrentStep(1); }} className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10">Keep default and continue</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {showInclusionPopup && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-richBlack/90 backdrop-blur-sm">
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
+          <div className="modal-overlay" style={{ zIndex: 9994 }} onClick={() => setShowInclusionPopup(false)}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="glass-card p-10 max-w-md text-center border-tan/30"
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="modal-box max-w-md p-8 text-center"
             >
-              <Info className="text-tan mx-auto mb-6" size={48} />
-              <h3 className="text-2xl font-playfair font-bold mb-4">Standard Inclusions</h3>
-              <p className="text-gray-400 mb-8">
-                For 'Only Delivery' orders, we provide premium disposable cutlery, napkins, and serving spoons as standard.
+              <div className="bg-tan/10 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 border border-tan/20">
+                <Info className="text-tan" size={24} />
+              </div>
+              <h3 className="text-2xl font-bold font-playfair text-white mb-2">Standard Inclusions</h3>
+              <p className="text-gray-400 text-sm leading-relaxed mb-6">
+                For standard delivery catering, premium disposable cutlery, napkins, and serving spoons are included at no extra cost.
               </p>
-              <button 
-                onClick={() => setShowInclusionPopup(false)}
-                className="w-full bg-tan text-richBlack py-4 rounded-full font-bold hover:scale-105 transition-all"
-              >
+              <button onClick={() => setShowInclusionPopup(false)} className="w-full btn btn-primary py-3.5 rounded-xl cursor-pointer">
                 I Understand
               </button>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-      {/* Progress Bar */}
-      <div className="flex justify-between mb-8 sm:mb-12 relative">
-        <div className="absolute top-4 sm:top-5 left-0 w-full h-0.5 bg-white/10 z-0" />
-        <div 
-          className="absolute top-4 sm:top-5 left-0 h-0.5 bg-tan z-0 transition-all duration-500" 
-          style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
-        />
-        {steps.map((step, index) => (
-          <div key={step} className="relative z-10 flex flex-col items-center">
-            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm transition-colors duration-500 ${
-              index <= currentStep ? 'bg-tan text-richBlack' : 'bg-richBlack border-2 border-white/20 text-white/40'
-            }`}>
-              {index < currentStep ? <Check size={14} /> : index + 1}
-            </div>
-            <span className={`mt-1.5 text-[9px] sm:text-xs font-semibold text-center leading-tight ${index <= currentStep ? 'text-tan' : 'text-white/40'}`}>
-              {step}
-            </span>
-          </div>
-        ))}
-      </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentStep}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.3 }}
-          className="glass-card p-4 sm:p-8 md:p-12 min-h-[500px]"
-        >
-          {currentStep === 0 && (
-            <div className="space-y-10">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
-                <h2 className="text-4xl font-playfair font-bold text-tan">Event Details</h2>
-                <div className="text-xs text-gray-500 uppercase tracking-widest font-bold bg-white/5 px-4 py-2 rounded-full border border-white/10">
-                    Step 1 of 5
-                </div>
-              </div>
-              
-              <div className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-8 md:p-12 space-y-6 sm:space-y-10 shadow-2xl relative overflow-hidden group hover:border-tan/20 transition-all">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-tan/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-tan/10 transition-all" />
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                  <div className="space-y-4">
-                    <label className="block text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] ml-1">Venue Location</label>
-                    <div className="relative group">
-                      <select 
-                        className={`w-full bg-richBlack/50 border p-4 rounded-2xl focus:border-tan outline-none transition-all appearance-none cursor-pointer ${
-                          errors.includes('venue') ? 'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'border-white/10 group-hover:border-white/20'
-                        }`}
-                        value={formData.venue}
-                        onChange={(e) => {
-                          setFormData({...formData, venue: e.target.value});
-                          setErrors(errors.filter(e => e !== 'venue'));
-                        }}
-                      >
-                        <option value="Dubai" className="bg-charcoal">Dubai</option>
-                        <option value="Sharjah" className="bg-charcoal">Sharjah</option>
-                        <option value="Ajman" className="bg-charcoal">Ajman</option>
-                      </select>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                        <ChevronRight size={20} className="rotate-90" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="block text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] ml-1">Guest Count <span className="text-gray-600 font-normal lowercase tracking-normal">(Min: 10, Step: 5)</span></label>
-                    <div className="flex items-center gap-3 sm:gap-6">
-                      <button 
-                        onClick={() => {
-                          const newVal = Math.max(10, formData.guests - 5);
-                          setFormData({...formData, guests: newVal});
-                        }}
-                        className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-tan hover:text-richBlack hover:border-tan transition-all text-xl sm:text-2xl font-light shadow-lg flex-shrink-0"
-                      >
-                        -
-                      </button>
-                      <div className={`flex-1 bg-white/5 border p-3 sm:p-4 rounded-2xl text-center font-playfair font-bold text-xl sm:text-2xl shadow-inner ${
-                        errors.includes('guests') ? 'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'border-white/10'
-                      }`}>
-                        {formData.guests} <span className="text-xs sm:text-sm font-inter text-gray-500 font-normal uppercase tracking-widest">Guests</span>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          setFormData({...formData, guests: formData.guests + 5});
-                        }}
-                        className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-tan hover:text-richBlack hover:border-tan transition-all text-xl sm:text-2xl font-light shadow-lg flex-shrink-0"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="md:col-span-2 space-y-4">
-                    <label className="block text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] ml-1">Event Date</label>
-                    <div className="relative group">
-                      <select 
-                        className={`w-full bg-richBlack/50 border p-4 rounded-2xl focus:border-tan outline-none transition-all appearance-none cursor-pointer ${
-                          errors.includes('date') ? 'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'border-white/10 group-hover:border-white/20'
-                        }`}
-                        value={formData.date}
-                        onChange={(e) => {
-                          setFormData({...formData, date: e.target.value});
-                          setErrors(errors.filter(e => e !== 'date'));
-                        }}
-                      >
-                        <option value="" className="bg-charcoal">Select Available Date</option>
-                        {availableDates
-                          .filter(d => {
-                            const dateObj = new Date(d.date);
-                            const today = new Date();
-                            const diffMs = dateObj.getTime() - today.getTime();
-                            const diffHrs = diffMs / (1000 * 60 * 60);
-                            
-                            const requiredHrs = formData.serviceType === 'Delivery' ? 24 : 48;
-                            return diffHrs >= requiredHrs;
-                          })
-                          .map(d => (
-                            <option key={d._id} value={d.date.split('T')[0]} className="bg-charcoal">
-                              {new Date(d.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                            </option>
-                          ))
-                        }
-                      </select>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                        <ChevronRight size={20} className="rotate-90" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="md:col-span-2 space-y-4">
-                    <label className="block text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] ml-1">Occasion Type</label>
-                    <div className="relative group">
-                      <select 
-                        className={`w-full bg-richBlack/50 border p-4 rounded-2xl focus:border-tan outline-none transition-all appearance-none cursor-pointer ${
-                          errors.includes('occasion') ? 'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'border-white/10 group-hover:border-white/20'
-                        }`}
-                        value={formData.occasion}
-                        onChange={(e) => {
-                          setFormData({...formData, occasion: e.target.value});
-                          setErrors(errors.filter(e => e !== 'occasion'));
-                        }}
-                      >
-                        {['Birthday Party', 'House Party', 'Kids Party', 'Wedding Event', 'Baby Shower', 'Corporate Event', 'Kitty Party', 'Housewarming', 'Other'].map(opt => (
-                          <option key={opt} value={opt} className="bg-richBlack">{opt}</option>
-                        ))}
-                      </select>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                        <ChevronRight size={20} className="rotate-90" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="block text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] ml-1">Service Type</label>
-                    <div className="flex flex-col gap-3">
-                      {[
-                        { id: 'Delivery', label: 'Only Delivery', notice: '24hrs notice' },
-                        { id: 'Delivery + Service', label: 'Delivery + Service', notice: '48hrs notice' },
-                        { id: 'Buffet', label: 'Complete Buffet', notice: '48hrs notice' }
-                      ].map(type => (
-                        <div 
-                          key={type.id}
-                          onClick={() => {
-                            setFormData({...formData, serviceType: type.id as any});
-                            setErrors(errors.filter(e => e !== 'serviceType'));
-                          }}
-                          className={`p-4 rounded-2xl cursor-pointer border-2 transition-all flex justify-between items-center relative group/item overflow-hidden ${
-                            formData.serviceType === type.id ? 'border-tan bg-tan/10' : 
-                            errors.includes('serviceType') ? 'border-red-500/50 bg-red-500/5' : 'border-white/5 bg-white/5 hover:border-white/10'
-                          }`}
-                        >
-                          {formData.serviceType === type.id && (
-                            <motion.div layoutId="service-bg" className="absolute left-0 w-1 h-full bg-tan" />
-                          )}
-                          <span className={`font-semibold transition-colors ${formData.serviceType === type.id ? 'text-tan' : 'text-gray-300'}`}>{type.label}</span>
-                          <span className="text-[10px] text-tan/40 uppercase tracking-tighter group-hover/item:text-tan/60 transition-colors">{type.notice}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="block text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em] ml-1">Food Preference</label>
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                      {['Veg', 'Non-Veg', 'Mixed'].map(pref => (
-                        <div 
-                          key={pref}
-                          onClick={() => {
-                            setFormData({...formData, foodPreference: pref as any});
-                            setErrors(errors.filter(e => e !== 'foodPreference'));
-                          }}
-                          className={`p-3 sm:p-4 rounded-2xl cursor-pointer border-2 text-center transition-all flex flex-col items-center justify-center gap-1.5 sm:gap-2 group/pref relative overflow-hidden ${
-                            formData.foodPreference === pref ? 'border-tan bg-tan/10' : 
-                            errors.includes('foodPreference') ? 'border-red-500/50 bg-red-500/5' : 'border-white/5 bg-white/5 hover:border-white/10'
-                          }`}
-                        >
-                          <div className={`w-1.5 h-1.5 rounded-full ${pref === 'Veg' ? 'bg-green-500' : pref === 'Non-Veg' ? 'bg-red-500' : 'bg-tan'} shadow-[0_0_10px_rgba(212,175,55,0.3)]`} />
-                          <span className={`text-xs font-bold uppercase tracking-widest ${formData.foodPreference === pref ? 'text-tan' : 'text-gray-400'}`}>{pref}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="p-4 bg-tan/5 rounded-2xl border border-tan/10 mt-4">
-                        <p className="text-[10px] text-tan/60 italic leading-relaxed">
-                            <Info size={10} className="inline mr-1" /> Choosing "Mixed" allows you to combine both Vegetarian and Non-Vegetarian dishes in your final selection.
-                        </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 1 && (
-            <div>
-              <h2 className="text-4xl font-playfair font-bold mb-8 text-tan">Choose Your Package</h2>
-              <div className="text-gray-400 mb-8">- to customize your menu click next.</div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                {['Standard', 'Premium', 'Elite'].map((pkg) => (
-                  <div 
-                    key={pkg}
-                    onClick={() => {
-                        setFormData({...formData, package: pkg});
-                        setIsCustomizing(false);
-                    }}
-                    className={`p-6 rounded-2xl cursor-pointer border-2 transition-all hover:scale-105 ${
-                      formData.package === pkg ? 'border-tan bg-tan/10' : 'border-white/10 bg-white/5'
-                    }`}
-                  >
-                    <h3 className="text-2xl font-playfair font-bold mb-4">{pkg}</h3>
-                    <ul className="text-sm text-gray-400 space-y-2 mb-6">
-                      <li className="flex gap-2"><Check size={16} className="text-tan" /> {pkg === 'Standard' ? '3' : pkg === 'Premium' ? '5' : '8'} Main Courses</li>
-                      <li className="flex gap-2"><Check size={16} className="text-tan" /> {pkg === 'Standard' ? '2' : '4'} Starters</li>
-                      <li className="flex gap-2"><Check size={16} className="text-tan" /> 1 Dessert</li>
-                    </ul>
-                    <div className="text-2xl font-bold text-tan">AED {pkg === 'Standard' ? 120 : pkg === 'Premium' ? 180 : 250}<span className="text-sm font-normal text-gray-500"> / guest</span></div>
-                  </div>
-                ))}
-              </div>
-
-              {formData.selectedItems.length > 0 && !isCustomizing && (
-                <div className="mt-12 p-8 bg-white/5 rounded-2xl border border-white/10">
-                   <div className="flex justify-between items-center mb-8">
-                      <h3 className="text-2xl font-playfair font-bold">Recommended Menu for {formData.occasion}</h3>
-                   </div>
-                   <p className="text-gray-400 -mt-6 mb-8 text-sm italic">You can replace the menu you need.</p>
-                   
-                   <div className="space-y-8">
-                        {Object.keys(categorizedRecommended).map(cat => (
-                            <div key={cat}>
-                                <h4 className="text-xs font-bold uppercase tracking-widest text-tan/60 mb-4">{cat}</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {categorizedRecommended[cat].map((item: MenuItem) => (
-                                        <div key={item.id} className="flex items-center gap-3 bg-black/30 p-3 rounded-xl border border-white/5 group hover:border-white/20 transition-all">
-                                            <div className={`w-2 h-2 rounded-full ${item.dietary === 'Veg' ? 'bg-green-500' : 'bg-red-500'}`} />
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-semibold">{item.name}</span>
-                                            </div>
-                                            <button 
-                                                onClick={() => handleReplaceItem(item)}
-                                                className="ml-auto bg-tan/10 text-tan text-[10px] px-3 py-1 rounded-full font-bold border border-tan/20 hover:bg-tan hover:text-richBlack transition-all"
-                                            >
-                                                Replace
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                   </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {currentStep === 2 && (
-            <div className="space-y-8">
-              {/* Summary at Top */}
-              <div className="bg-white/5 p-4 sm:p-8 rounded-2xl border border-tan/20 flex flex-col md:flex-row gap-4 sm:gap-8 items-start sm:items-center justify-between">
+      <AnimatePresence>
+        {showBookingPrompt && (
+          <div className="modal-overlay" style={{ zIndex: 9996 }} onClick={() => setShowBookingPrompt(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              onClick={e => e.stopPropagation()}
+              className="modal-box max-w-2xl p-6 sm:p-8 max-h-[90dvh] overflow-y-auto"
+            >
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-2xl font-playfair font-bold mb-2">Live Summary</h3>
-                  <div className="flex gap-4 text-sm text-gray-400">
-                    <span>{formData.package} Package</span>
-                    <span>•</span>
-                    <span>{formData.guests} Guests</span>
-                  </div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-tan">Booking prompt {bookingPromptStep + 1} / 3</p>
+                  <h3 className="mt-2 text-2xl font-playfair font-bold text-white">
+                    {bookingPromptStep === 0 && 'Where and how many?'}
+                    {bookingPromptStep === 1 && 'When and for what?'}
+                    {bookingPromptStep === 2 && 'How would you like it served?'}
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-300">
+                    {bookingPromptStep === 0 && 'Choose your service area and guest count to begin the booking.'}
+                    {bookingPromptStep === 1 && 'Select a date and event style to tailor your booking.'}
+                    {bookingPromptStep === 2 && 'Choose the service style, package, and food preference that fits your event.'}
+                  </p>
                 </div>
-                
-                <div className="text-right">
-                  <div className="text-xs text-gray-500 uppercase mb-1">Subtotal</div>
-                  <div className="text-4xl font-playfair font-bold text-tan">AED {calculateTotalPrice()}</div>
-                </div>
+                <button type="button" onClick={() => setShowBookingPrompt(false)} className="rounded-full border border-white/10 p-2 text-gray-400 transition-colors hover:text-white">✕</button>
               </div>
 
-              {/* Add more dishes section */}
-              <div className="text-center py-12 border-2 border-dashed border-white/10 rounded-3xl">
-                <p className="text-gray-400 mb-6 font-semibold italic text-sm">Want to modify quantities or add more dishes to your event?</p>
-                <button 
-                  onClick={() => setShowFullMenu(!showFullMenu)}
-                  className="bg-tan text-richBlack px-10 py-4 rounded-full font-bold hover:scale-105 transition-all shadow-lg flex items-center gap-2 mx-auto"
-                >
-                  {showFullMenu ? 'Hide Menu' : 'Customize Your Menu'}
+              <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5">
+                {bookingPromptStep === 0 && (
+                  <div className="space-y-5">
+                    <div className="space-y-2">
+                      <label className="block text-[10px] uppercase font-bold tracking-[0.2em] text-gray-400">Venue</label>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {['Dubai', 'Sharjah'].map(option => (
+                          <button key={option} type="button" onClick={() => setFormData(prev => ({ ...prev, venue: option }))} className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-all ${formData.venue === option ? 'border-tan bg-tan/10 text-tan' : 'border-white/10 bg-white/5 text-white hover:bg-white/10'}`}>
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] uppercase font-bold tracking-[0.2em] text-gray-400">Guest count</label>
+                      <input type="number" min="10" step="10" value={formData.guests} onChange={(e) => setFormData(prev => ({ ...prev, guests: Number(e.target.value) || 10 }))} className="input-field" />
+                      <p className="text-xs text-gray-500">Minimum booking size is 10 guests.</p>
+                    </div>
+                  </div>
+                )}
+
+                {bookingPromptStep === 1 && (
+                  <div className="space-y-5">
+                    <div className="space-y-2">
+                      <label className="block text-[10px] uppercase font-bold tracking-[0.2em] text-gray-400">Preferred date</label>
+                      <div className="w-full">
+                        <Calendar 
+                          availableDates={availableDates.map(d => d.date)} 
+                          selectedDate={formData.date} 
+                          onSelect={(d) => setFormData(prev => ({ ...prev, date: d }))} 
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] uppercase font-bold tracking-[0.2em] text-gray-400">Occasion</label>
+                      <select value={formData.occasion} onChange={(e) => setFormData(prev => ({ ...prev, occasion: e.target.value }))} className="input-field">
+                        <option value="Birthday Party">Birthday Party</option>
+                        <option value="Wedding">Wedding</option>
+                        <option value="Corporate Event">Corporate Event</option>
+                        <option value="Private Gathering">Private Gathering</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {bookingPromptStep === 2 && (
+                  <div className="space-y-5">
+                    <div className="space-y-2">
+                      <label className="block text-[10px] uppercase font-bold tracking-[0.2em] text-gray-400">Service style</label>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        {(['Delivery', 'Delivery + Service', 'Buffet'] as const).map(option => (
+                          <button key={option} type="button" onClick={() => setFormData(prev => ({ ...prev, serviceType: option }))} className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-all ${formData.serviceType === option ? 'border-tan bg-tan/10 text-tan' : 'border-white/10 bg-white/5 text-white hover:bg-white/10'}`}>
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] uppercase font-bold tracking-[0.2em] text-gray-400">Food preference</label>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        {(['Veg', 'Non-Veg', 'Mixed'] as const).map(option => (
+                          <button key={option} type="button" onClick={() => setFormData(prev => ({ ...prev, foodPreference: option }))} className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${formData.foodPreference === option ? 'border-tan bg-tan/10 text-tan' : 'border-white/10 bg-white/5 text-white hover:bg-white/10'}`}>
+                            {formData.foodPreference === option && <Check size={14} />} {option}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] uppercase font-bold tracking-[0.2em] text-gray-400">Package</label>
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        {packageOptions.map(option => (
+                          <button key={option.name} type="button" onClick={() => setFormData(prev => ({ ...prev, package: option.name }))} className={`rounded-2xl border px-3 py-3 text-left transition-all ${formData.package === option.name ? 'border-tan bg-tan/10 text-tan' : 'border-white/10 bg-white/5 text-white hover:bg-white/10'}`}>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold">{option.name}</span>
+                              <span className="text-[11px] font-semibold text-tan">AED {option.price}/guest</span>
+                            </div>
+                            <p className="mt-2 text-[11px] leading-5 text-gray-400">{option.description}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-tan">Available menu preview</p>
+                        <p className="text-[11px] text-gray-400">{formData.package ? `${formData.package} package` : 'Select a package'}</p>
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        {formData.selectedItems.length > 0 ? formData.selectedItems.slice(0, 4).map(item => (
+                          <div key={item.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
+                            <div>
+                              <p className="text-sm font-semibold text-white">{item.name}</p>
+                              <p className="text-[11px] text-gray-400">{item.category}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <p className="text-xs font-semibold text-tan">x{item.quantity || 1}</p>
+                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setItemToReplace(item); setIsReplaceModalOpen(true); }} className="text-[10px] text-gray-400 hover:text-tan underline ml-2">Replace</button>
+                            </div>
+                          </div>
+                        )) : <p className="text-sm text-gray-500">The suggested menu will appear here once your package is selected.</p>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 flex items-center justify-between gap-3">
+                <button type="button" onClick={() => bookingPromptStep > 0 ? setBookingPromptStep(prev => prev - 1) : setShowBookingPrompt(false)} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10">
+                  {bookingPromptStep > 0 ? 'Back' : 'Cancel'}
+                </button>
+                <button type="button" onClick={goToNextBookingPrompt} className="rounded-xl bg-tan px-4 py-2.5 text-sm font-semibold text-richBlack transition-colors hover:bg-tan/90">
+                  {bookingPromptStep === 2 ? 'Continue to menu' : 'Next'}
                 </button>
               </div>
-
-              {showFullMenu && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-8">
-                    <div>
-                        <h2 className="text-4xl font-playfair font-bold text-tan mb-8">All Dishes</h2>
-                        {errors.includes('menu') && <p className="text-red-500 text-sm mb-4">Please select at least one item from the menu.</p>}
-                        <div className="space-y-8">
-                        {Array.from(new Set(menuItems.map(i => i.category))).map((cat) => (
-                            <div key={cat}>
-                            <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-4">{cat}</h4>
-                            <div className="space-y-3">
-                                {menuItems
-                                .filter(i => i.is_active)
-                                .filter(i => !i.packages || i.packages.length === 0 || i.packages.includes(formData.package))
-                                .filter(i => i.category === cat)
-                                .filter(i => {
-                                    if (formData.foodPreference === 'Mixed') return true;
-                                    return i.dietary === formData.foodPreference;
-                                })
-                                .map(item => {
-                                    const selectedItem = formData.selectedItems.find((si: MenuItem) => si.id === item.id);
-                                    return (
-                                        <div 
-                                            key={item.id}
-                                            className={`p-4 rounded-xl border transition-all flex justify-between items-center ${
-                                            selectedItem ? 'border-tan bg-tan/5' : 'border-white/5 bg-white/5 hover:border-white/20'
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-3 text-left">
-                                                <div className={`w-2 h-2 rounded-full ${item.dietary === 'Veg' ? 'bg-green-500' : 'bg-red-500'}`} />
-                                                <div className="flex flex-col">
-                                                    <span className="font-semibold text-sm">{item.name}</span>
-                                                    <span className="text-[10px] text-tan">AED {item.base_price}/unit</span>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="flex items-center gap-2 bg-black/20 rounded-lg p-1">
-                                                <button 
-                                                    onClick={() => {
-                                                        const current = selectedItem?.quantity || 0;
-                                                        if (current <= 1) {
-                                                            setFormData({...formData, selectedItems: formData.selectedItems.filter(i => i.id !== item.id)});
-                                                            if (!isCustomizing) setIsCustomizing(true);
-                                                        } else {
-                                                            setFormData({...formData, selectedItems: formData.selectedItems.map(i => i.id === item.id ? {...i, quantity: current - 1} : i)});
-                                                            if (!isCustomizing) setIsCustomizing(true);
-                                                        }
-                                                    }}
-                                                    className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center font-bold"
-                                                >
-                                                    -
-                                                </button>
-                                                <span className="text-sm font-bold w-4 text-center">{selectedItem?.quantity || 0}</span>
-                                                <button 
-                                                    onClick={() => {
-                                                        if (selectedItem) {
-                                                            setFormData({...formData, selectedItems: formData.selectedItems.map(i => i.id === item.id ? {...i, quantity: (i.quantity || 1) + 1} : i)});
-                                                        } else {
-                                                            setFormData({...formData, selectedItems: [...formData.selectedItems, {...item, quantity: 1}]});
-                                                        }
-                                                        if (!isCustomizing) setIsCustomizing(true);
-                                                    }}
-                                                    className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center font-bold"
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            </div>
-                        ))}
-                        </div>
-                    </div>
-
-                    <div className="bg-white/5 p-8 rounded-2xl border border-white/10 h-fit sticky top-32">
-                        <h3 className="text-2xl font-playfair font-bold mb-6">Current Selection</h3>
-                        <div className="space-y-4 mb-8">
-                        {formData.selectedItems.map(item => (
-                            <div key={item.id} className="flex justify-between text-sm">
-                                <span className="text-gray-400">{item.name} x {item.quantity}</span>
-                                <span className="text-white font-semibold">AED {(item.base_price * (item.quantity || 1) * formData.guests / 10).toFixed(0)}</span>
-                            </div>
-                        ))}
-                        {formData.selectedItems.length === 0 && <p className="text-gray-500 italic text-sm">No dishes added yet.</p>}
-                        </div>
-                        <div className="bg-tan/10 p-4 rounded-xl border border-tan/20 flex flex-col gap-2">
-                        <div className="text-xs font-bold uppercase tracking-tighter text-tan">Weight Estimate</div>
-                        <div className="text-lg font-bold">~{((formData.guests / 10) * formData.selectedItems.reduce((acc, i) => acc + (i.quantity || 1), 0) * 0.1).toFixed(1)} kg Total Food</div>
-                        </div>
-                    </div>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {currentStep === 3 && (
-            <div>
-              <h2 className="text-4xl font-playfair font-bold mb-8 text-tan">Contact & Delivery</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="md:col-span-2">
-                  <label className="block text-gray-400 mb-2 font-bold uppercase text-xs tracking-widest">Full Name *</label>
-                  <input 
-                    type="text"
-                    placeholder="Enter your full name"
-                    className={`w-full bg-white/5 border p-4 rounded-xl focus:border-tan outline-none transition-colors ${
-                      errors.includes('name') || errors.includes('name_format') ? 'border-red-500' : 'border-white/10'
-                    }`}
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  />
-                  {errors.includes('name_format') && <p className="text-red-500 text-xs mt-1">Name should only contain letters and spaces</p>}
-                </div>
-                <div>
-                  <label className="block text-gray-400 mb-2 font-bold uppercase text-xs tracking-widest">Mobile Number *</label>
-                  <input 
-                    type="tel"
-                    placeholder="054 -- --- ----"
-                    className={`w-full bg-white/5 border p-4 rounded-xl focus:border-tan outline-none transition-colors ${
-                      errors.includes('mobile') || errors.includes('mobile_format') ? 'border-red-500' : 'border-white/10'
-                    }`}
-                    value={formData.mobile}
-                    onChange={(e) => setFormData({...formData, mobile: e.target.value})}
-                  />
-                   {errors.includes('mobile_format') && <p className="text-red-500 text-xs mt-1">Mobile number should only contain digits</p>}
-                </div>
-                <div>
-                  <label className="block text-gray-400 mb-2 font-bold uppercase text-xs tracking-widest">Email Address *</label>
-                  <input 
-                    type="email"
-                    placeholder="your@email.com"
-                    className={`w-full bg-white/5 border p-4 rounded-xl focus:border-tan outline-none transition-colors ${
-                      errors.includes('email') || errors.includes('email_format') ? 'border-red-500' : 'border-white/10'
-                    }`}
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  />
-                  {errors.includes('email_format') && <p className="text-red-500 text-xs mt-1">Please enter a valid email address</p>}
-                </div>
-                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-gray-400 mb-2 font-bold uppercase text-xs tracking-widest">Flat / Villa No *</label>
-                    <input 
-                      type="text"
-                      placeholder="e.g. Villa 12 or Apt 402"
-                      className={`w-full bg-white/5 border p-4 rounded-xl focus:border-tan outline-none transition-colors ${
-                        errors.includes('address_flat') ? 'border-red-500' : 'border-white/10'
-                      }`}
-                      value={formData.address.flatVilla}
-                      onChange={(e) => setFormData({...formData, address: {...formData.address, flatVilla: e.target.value}})}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-400 mb-2 font-bold uppercase text-xs tracking-widest">Street Name *</label>
-                    <input 
-                      type="text"
-                      placeholder="Enter street name"
-                      className={`w-full bg-white/5 border p-4 rounded-xl focus:border-tan outline-none transition-colors ${
-                        errors.includes('address_street') ? 'border-red-500' : 'border-white/10'
-                      }`}
-                      value={formData.address.street}
-                      onChange={(e) => setFormData({...formData, address: {...formData.address, street: e.target.value}})}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-400 mb-2 font-bold uppercase text-xs tracking-widest">Area / Community *</label>
-                    <input 
-                      type="text"
-                      placeholder="e.g. Marina, Al Barsha..."
-                      className={`w-full bg-white/5 border p-4 rounded-xl focus:border-tan outline-none transition-colors ${
-                        errors.includes('address_area') ? 'border-red-500' : 'border-white/10'
-                      }`}
-                      value={formData.address.area}
-                      onChange={(e) => setFormData({...formData, address: {...formData.address, area: e.target.value}})}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-400 mb-2 font-bold uppercase text-xs tracking-widest">Landmark (Optional)</label>
-                    <input 
-                      type="text"
-                      placeholder="Near which building/park?"
-                      className="w-full bg-white/5 border border-white/10 p-4 rounded-xl focus:border-tan outline-none transition-colors"
-                      value={formData.address.landmark}
-                      onChange={(e) => setFormData({...formData, address: {...formData.address, landmark: e.target.value}})}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 4 && (
-            <div className="text-center py-20">
-              <Check className="mx-auto mb-4 text-tan" size={48} />
-              <h2 className="text-4xl font-playfair font-bold mb-4">Review Your Booking</h2>
-              <p className="text-gray-400 max-w-md mx-auto mb-12">Please review your selections and event details before proceeding to payment.</p>
-              
-              <div className="glass-card p-8 max-w-2xl mx-auto text-left">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                  <div>
-                    <div className="text-xs text-gray-500 uppercase mb-1">Venue</div>
-                    <div className="font-bold">{formData.venue}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500 uppercase mb-1">Date</div>
-                    <div className="font-bold">{formData.date || 'TBD'}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500 uppercase mb-1">Guests</div>
-                    <div className="font-bold">{formData.guests}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500 uppercase mb-1">Occasion</div>
-                    <div className="font-bold">{formData.occasion}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500 uppercase mb-1">Service Type</div>
-                    <div className="font-bold">{formData.serviceType}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500 uppercase mb-1">Preference</div>
-                    <div className="font-bold">{formData.foodPreference}</div>
-                  </div>
-                  <div className="md:col-span-2">
-                    <div className="text-xs text-gray-500 uppercase mb-1">Customer Details</div>
-                    <div className="font-bold">{formData.name}</div>
-                    <p className="text-sm text-gray-400">{formData.email} | {formData.mobile}</p>
-                  </div>
-                  <div className="md:col-span-1">
-                    <div className="text-xs text-gray-500 uppercase mb-1">Delivery Address</div>
-                    <div className="font-bold text-sm">
-                      {formData.address.flatVilla}, {formData.address.street}, {formData.address.area}
-                      {formData.address.landmark && <span className="block text-xs font-normal text-gray-400 mt-1">Landmark: {formData.address.landmark}</span>}
-                    </div>
-                  </div>
-                </div>
-                <div className="mb-8">
-                  <div className="text-xs text-gray-500 uppercase mb-4">Selected Menu</div>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.selectedItems.map((item: MenuItem) => (
-                      <span key={item.id} className="bg-white/5 border border-white/10 px-3 py-1 rounded-full text-sm">{item.name}</span>
-                    ))}
-                  </div>
-                </div>
-                <div className="pt-8 border-t border-white/10 flex justify-between items-end">
-                  <div>
-                    <div className="text-xs text-gray-500 uppercase mb-1">Total Amount</div>
-                    <div className="text-4xl font-playfair font-bold text-tan">AED {(calculateTotalPrice() * 1.05).toFixed(2)}</div>
-                    <div className="text-xs text-gray-500">Includes 5% VAT</div>
-                  </div>
-                  <button onClick={handleCompleteBooking} className="bg-tan text-richBlack px-8 py-3 rounded-full font-bold hover:scale-105 transition-all">
-                    Checkout & Confirm
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </motion.div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
 
-      <div className="flex justify-between mt-8 sm:mt-12 gap-3">
-        <button 
-          onClick={prevStep}
-          disabled={currentStep === 0}
-          className={`flex items-center gap-2 px-5 sm:px-8 py-3 sm:py-4 rounded-full font-bold transition-all text-sm sm:text-base ${
-            currentStep === 0 ? 'opacity-0 pointer-events-none' : 'bg-white/5 hover:bg-white/10'
-          }`}
-        >
-          <ChevronLeft size={18} /> Back
-        </button>
-        <button 
-          onClick={nextStep}
-          className="flex items-center gap-2 bg-tan text-richBlack px-5 sm:px-8 py-3 sm:py-4 rounded-full font-bold hover:scale-105 transition-all text-sm sm:text-base"
-        >
-          {currentStep === steps.length - 1 ? 'Complete Booking' : 'Continue'} <ChevronRight size={18} />
-        </button>
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="overflow-hidden rounded-[32px] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(201,160,92,0.18),_transparent_38%),linear-gradient(135deg,_rgba(255,255,255,0.06),_transparent_55%),#2D0000] p-5 sm:p-7 lg:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.35)]"
+      >
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-tan/20 bg-tan/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-tan">
+              <Sparkles size={12} /> Curated catering in just three simple steps
+            </div>
+            <h1 className="mt-4 text-3xl sm:text-4xl font-playfair font-bold text-white">Plan your event with clarity and confidence.</h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-gray-300">
+              The booking flow is now simplified so you can move from ideas to a polished catering request without the usual friction.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-tan/20 bg-black/20 p-4 min-w-[220px]">
+            <p className="text-[10px] uppercase tracking-[0.25em] text-gray-400">Estimated total</p>
+            <div className="mt-2 text-3xl font-bold text-tan">{formatAED(totalEstimate)}</div>
+            <p className="mt-1 text-xs text-gray-400">For {formData.guests} guests • {selectedMenuCount} selected portions</p>
+          </div>
+        </div>
+
+        <div className="mt-7 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {steps.map((step, index) => {
+              const isActive = index === currentStep;
+              const isPast = index < currentStep;
+              return (
+                <button key={step} type="button" onClick={() => setCurrentStep(index)} className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition-all ${isActive ? 'border-tan bg-tan/10 text-tan' : isPast ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-white/10 bg-black/10 text-gray-300'}`}>
+                  <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] ${isActive ? 'bg-tan text-richBlack' : 'bg-white/10 text-white'}`}>
+                    {isPast ? <Check size={12} /> : index + 1}
+                  </span>
+                  {step}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </motion.div>
+
+      <div className="mt-7 grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentStep}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.25 }}
+            className="rounded-[28px] border border-white/10 bg-[#2D0000] p-5 sm:p-8 shadow-2xl"
+          >
+            {isDataLoading ? (
+              <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/10 bg-white/5 p-8 text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-tan" />
+                <div>
+                  <h3 className="text-xl font-playfair font-semibold text-white">Preparing your booking experience</h3>
+                  <p className="mt-2 text-sm text-gray-400">We are loading the latest menu and availability options for you.</p>
+                </div>
+              </div>
+            ) : currentStep === 0 ? (
+              <div className="space-y-7">
+                <div className="flex flex-col gap-2 border-b border-white/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h2 className="text-2xl font-playfair font-bold text-white">Plan your booking</h2>
+                    <p className="text-sm text-gray-400">We will guide you through the details one prompt at a time.</p>
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-400">Step 1 of 2</div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-6">
+                  <h3 className="text-lg font-playfair font-semibold text-white">Start with the essentials</h3>
+                  <p className="mt-2 text-sm text-gray-400">Each selection opens a small popup so the booking feels simple and calm.</p>
+                  <button type="button" onClick={openBookingPrompt} className="mt-5 rounded-xl bg-tan px-5 py-3 text-sm font-semibold text-richBlack transition-colors hover:bg-tan/90">Start booking</button>
+                </div>
+              </div>
+            ) : currentStep === 1 ? (
+              <div className="space-y-7">
+                <div className="flex flex-col gap-2 border-b border-white/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h2 className="text-2xl font-playfair font-bold text-white">Contact details</h2>
+                    <p className="text-sm text-gray-400">Share your details so the team can confirm everything smoothly.</p>
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-400">Step 2 of 3</div>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="md:col-span-2 space-y-1.5">
+                    <label className="block text-[10px] uppercase font-bold text-gray-400 ml-1">Full name</label>
+                    <input type="text" placeholder="Enter full name" className={`input-field ${errors.includes('name') || errors.includes('name_format') ? 'border-red-500' : ''}`} value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+                    {errors.includes('name_format') && <p className="text-red-500 text-[10px] mt-1">Name can only contain alphabet characters</p>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] uppercase font-bold text-gray-400 ml-1">Mobile number</label>
+                    <input type="tel" placeholder="054 -- --- ----" className={`input-field ${errors.includes('mobile') || errors.includes('mobile_format') ? 'border-red-500' : ''}`} value={formData.mobile} onChange={(e) => setFormData({ ...formData, mobile: e.target.value })} />
+                    {errors.includes('mobile_format') && <p className="text-red-500 text-[10px] mt-1">Mobile number can only contain digits</p>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] uppercase font-bold text-gray-400 ml-1">Email address</label>
+                    <input type="email" placeholder="name@email.com" className={`input-field ${errors.includes('email') || errors.includes('email_format') ? 'border-red-500' : ''}`} value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                    {errors.includes('email_format') && <p className="text-red-500 text-[10px] mt-1">Valid email format required</p>}
+                  </div>
+
+                  <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-tan">Delivery address</p>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] uppercase font-bold text-gray-400 ml-1">Villa / flat no</label>
+                        <input type="text" placeholder="Villa 12 or Apt 402" className={`input-field ${errors.includes('address_flat') ? 'border-red-500' : ''}`} value={formData.address.flatVilla} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, flatVilla: e.target.value } })} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] uppercase font-bold text-gray-400 ml-1">Street name</label>
+                        <input type="text" placeholder="Enter street name" className={`input-field ${errors.includes('address_street') ? 'border-red-500' : ''}`} value={formData.address.street} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, street: e.target.value } })} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] uppercase font-bold text-gray-400 ml-1">Area / community</label>
+                        <input type="text" placeholder="Marina, Al Barsha" className={`input-field ${errors.includes('address_area') ? 'border-red-500' : ''}`} value={formData.address.area} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, area: e.target.value } })} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] uppercase font-bold text-gray-400 ml-1">Landmark</label>
+                        <input type="text" placeholder="Near building or park" className="input-field" value={formData.address.landmark} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, landmark: e.target.value } })} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+                  <div className="flex items-center gap-2 text-tan">
+                    <Star size={16} />
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.2em]">Ready to confirm</h3>
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Service</p>
+                      <p className="mt-1 text-sm font-semibold text-white">{formData.serviceType}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Package</p>
+                      <p className="mt-1 text-sm font-semibold text-white">{formData.package}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Final estimate</p>
+                      <p className="text-2xl font-bold text-tan">{formatAED(totalEstimate)}</p>
+                    </div>
+                    <button onClick={handleCompleteBooking} className="btn btn-primary px-7 py-3.5 rounded-xl cursor-pointer">Submit booking request</button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </motion.div>
+        </AnimatePresence>
+
+        <div className="space-y-4">
+          <div className="rounded-[28px] border border-white/10 bg-[#2D0000] p-5 shadow-2xl">
+            <div className="flex items-center gap-2 text-tan">
+              <ShieldCheck size={16} />
+              <h3 className="text-sm font-semibold uppercase tracking-[0.2em]">Your booking summary</h3>
+            </div>
+            <div className="mt-4 space-y-3 text-sm text-gray-300">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Date</p>
+                <p className="mt-1 text-white">{formData.date ? new Date(formData.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Choose a date'}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Guests</p>
+                <p className="mt-1 text-white">{formData.guests} people</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Package</p>
+                <p className="mt-1 text-white">{formData.package}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Service</p>
+                <p className="mt-1 text-white">{formData.serviceType}</p>
+              </div>
+              <div className="rounded-xl border border-tan/20 bg-tan/10 p-3">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-tan">Next step</p>
+                <p className="mt-1 text-sm text-white">We review your request and confirm the final details within one business day.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {currentStep === 0 ? (
+          <button onClick={openBookingPrompt} className="flex items-center justify-center gap-2 btn btn-primary px-6 py-3.5 rounded-xl text-xs font-semibold">
+            Start booking <ChevronRight size={16} />
+          </button>
+        ) : (
+          <>
+            <button onClick={prevStep} className="flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-xs font-semibold transition-all btn btn-secondary">
+              <ChevronLeft size={16} /> Back
+            </button>
+            <button onClick={currentStep === steps.length - 1 ? handleCompleteBooking : handleContinue} className="flex items-center justify-center gap-2 btn btn-primary px-6 py-3.5 rounded-xl text-xs font-semibold">
+              {currentStep === steps.length - 1 ? 'Submit booking request' : 'Continue'} <ChevronRight size={16} />
+            </button>
+          </>
+        )}
+      </div>
+
+      <SuccessModal 
+        isOpen={successModalOpen} 
+        title="Booking Request Submitted" 
+        message={successMessage} 
+        referenceId={successReferenceId}
+        onClose={handleModalClose}
+        actionLabel="View Dashboard"
+        onAction={() => window.location.href = '#/account'}
+      >
+        <div className="bg-black/20 border border-white/5 rounded-xl p-3 text-xs text-gray-300 space-y-2">
+            <p className="flex justify-between border-b border-white/5 pb-1 mb-1">
+              <span>Date</span>
+              <span className="font-semibold text-white">{new Date(formData.date).toLocaleDateString()}</span>
+            </p>
+            <p className="flex justify-between border-b border-white/5 pb-1 mb-1">
+              <span>Guests</span>
+              <span className="font-semibold text-white">{formData.guests}</span>
+            </p>
+            <p className="flex justify-between">
+              <span>Estimated Total</span>
+              <span className="font-semibold text-tan">{formatAED(totalEstimate)}</span>
+            </p>
+        </div>
+      </SuccessModal>
     </div>
   );
 };

@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { API_BASE_URL } from '../../config';
+import { motion, AnimatePresence } from 'framer-motion';
 
-import { Plus, Edit2, Trash2, Search, Filter } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Filter, Layers, Download } from 'lucide-react';
+import { formatAED } from '../../utils/currency';
+import ConfirmModal from '../../components/ConfirmModal';
+import { toast } from '../../components/Toast';
 
 interface MenuItem {
   _id: string;
@@ -28,6 +32,11 @@ const MenuManager = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  // Custom Modals State
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     category: 'Main Course',
@@ -38,7 +47,6 @@ const MenuManager = () => {
     occasions: [] as string[],
     is_active: true
   });
-
 
   useEffect(() => {
     fetchItems();
@@ -53,7 +61,7 @@ const MenuManager = () => {
       const data = await response.json();
       setItems(data);
     } catch (err) {
-      console.error('Failed to fetch menu items');
+      toast.error('Failed to fetch menu items');
     } finally {
       setLoading(false);
     }
@@ -78,24 +86,32 @@ const MenuManager = () => {
         setIsEditing(false);
         setEditingId(null);
         setFormData({ name: '', category: 'Main Course', base_price: 0, weight_ratio_per_10_guests: 1, dietary_tag: 'Veg', packages: [], occasions: [], is_active: true });
+        toast.success(isEditing ? 'Menu item updated' : 'Menu item created');
         fetchItems();
+      } else {
+        toast.error('Error saving menu item');
       }
     } catch (err) {
-      console.error(err);
+      toast.error('Failed to submit item');
     }
   };
 
-  
   const handleToggleActive = async (item: MenuItem) => {
     try {
       const token = localStorage.getItem('adminToken');
-      await fetch(`${API_BASE_URL}/api/admin/menu/${item._id}`, {
+      const updatedStatus = !item.is_active;
+      const response = await fetch(`${API_BASE_URL}/api/admin/menu/${item._id}`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...item, is_active: !item.is_active })
+        body: JSON.stringify({ ...item, is_active: updatedStatus })
       });
-      fetchItems();
-    } catch (err) { console.error(err); }
+      if (response.ok) {
+        toast.success(`Item marked as ${updatedStatus ? 'active' : 'inactive'}`);
+        fetchItems();
+      }
+    } catch (err) { 
+      toast.error('Failed to update status');
+    }
   };
 
   const handleEdit = (item: MenuItem) => {
@@ -109,21 +125,27 @@ const MenuManager = () => {
     setIsAdding(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this menu item?')) return;
+  const executeDelete = async () => {
+    if (!confirmDeleteId) return;
     try {
       const token = localStorage.getItem('adminToken');
-      await fetch(`${API_BASE_URL}/api/admin/menu/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/admin/menu/${confirmDeleteId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      fetchItems();
-    } catch (err) { console.error(err); }
+      if (response.ok) {
+        toast.success('Menu item deleted');
+        setConfirmDeleteId(null);
+        fetchItems();
+      } else {
+        toast.error('Error deleting item');
+      }
+    } catch (err) {
+      toast.error('Failed to delete item');
+    }
   };
 
-  const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
-    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} items?`)) return;
+  const executeBulkDelete = async () => {
     try {
       const token = localStorage.getItem('adminToken');
       const response = await fetch(`${API_BASE_URL}/api/admin/menu/bulk-delete`, {
@@ -135,10 +157,16 @@ const MenuManager = () => {
         body: JSON.stringify({ ids: selectedIds })
       });
       if (response.ok) {
+        toast.success(`${selectedIds.length} items deleted successfully`);
         setSelectedIds([]);
+        setConfirmBulkDelete(false);
         fetchItems();
+      } else {
+        toast.error('Error performing bulk delete');
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      toast.error('Failed to complete bulk delete');
+    }
   };
 
   const handleBulkStatus = async (is_active: boolean) => {
@@ -154,10 +182,15 @@ const MenuManager = () => {
         body: JSON.stringify({ ids: selectedIds, is_active })
       });
       if (response.ok) {
+        toast.success(`Updated ${selectedIds.length} items status`);
         setSelectedIds([]);
         fetchItems();
+      } else {
+        toast.error('Error updating items status');
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      toast.error('Failed to bulk toggle status');
+    }
   };
 
   const toggleSelect = (id: string) => {
@@ -179,29 +212,7 @@ const MenuManager = () => {
     const sampleRows = [
       '"Chicken Tikka","Starters",35,0.05,"Non-Veg","Standard|Premium|Elite","All"\n',
       '"Paneer Tikka","Starters",30,0.05,"Veg","Standard|Premium|Elite","All"\n',
-      '"Mutton Seekh Kebab","Starters",45,0.05,"Non-Veg","Premium|Elite","Wedding Event|Corporate Event"\n',
-      '"Caesar Salad","Salads",25,0.1,"Veg","Standard|Premium|Elite","All"\n',
-      '"Russian Salad","Salads",28,0.1,"Veg","Premium|Elite","All"\n',
-      '"Butter Chicken","Curry & Masala",45,0.1,"Non-Veg","Standard|Premium|Elite","All"\n',
-      '"Mutton Rogan Josh","Curry & Masala",55,0.1,"Non-Veg","Premium|Elite","All"\n',
-      '"Paneer Butter Masala","Curry & Masala",40,0.1,"Veg","Standard|Premium|Elite","All"\n',
-      '"Dal Makhani","Main Course",30,0.1,"Veg","Standard|Premium|Elite","All"\n',
-      '"Jeera Rice","Rice",20,0.1,"Veg","Standard|Premium|Elite","All"\n',
-      '"Chicken Biryani","Rice",50,0.1,"Non-Veg","Premium|Elite","All"\n',
-      '"Mutton Biryani","Rice",60,0.1,"Non-Veg","Elite","Wedding Event"\n',
-      '"Assorted Naan","Breads",15,0.05,"Veg","Standard|Premium|Elite","All"\n',
-      '"Tandoori Roti","Breads",10,0.05,"Veg","Standard|Premium|Elite","All"\n',
-      '"Sweet Corn Soup","Soup",20,0.05,"Veg","Standard|Premium|Elite","All"\n',
-      '"Hot & Sour Soup","Soup",22,0.05,"Veg","Premium|Elite","All"\n',
-      '"Penne Alfredo","Pasta",35,0.1,"Veg","Premium|Elite","All"\n',
-      '"Gulab Jamun","Desserts",25,0.03,"Veg","Standard|Premium|Elite","All"\n',
-      '"Rasmalai","Desserts",35,0.05,"Veg","Premium|Elite","All"\n',
-      '"Gajar Ka Halwa","Desserts",30,0.05,"Veg","Elite","Wedding Event"\n',
-      '"Samosa","Snacks",15,0.05,"Veg","Standard|Premium|Elite","House Party|Kitty Party"\n',
-      '"Mango Lassi","Beverages",18,0.05,"Veg","Premium|Elite","All"\n',
-      '"Mint Lemonade","Beverages",15,0.05,"Veg","Standard|Premium|Elite","All"\n',
-      '"Raita","Accompaniments",10,0.05,"Veg","Standard|Premium|Elite","All"\n',
-      '"Papad","Accompaniments",5,0.01,"Veg","Standard|Premium|Elite","All"\n'
+      '"Mutton Seekh Kebab","Starters",45,0.05,"Non-Veg","Premium|Elite","Wedding Event|Corporate Event"\n'
     ].join("");
     const blob = new Blob([headers + sampleRows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -219,7 +230,7 @@ const MenuManager = () => {
     reader.onload = async (evt) => {
       const text = evt.target?.result as string;
       const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-      if (lines.length <= 1) return alert('File is empty or only has headers');
+      if (lines.length <= 1) return toast.error('File is empty or only has headers');
       
       const bulkItems = lines.slice(1).map(line => {
         const cols: string[] = [];
@@ -250,15 +261,20 @@ const MenuManager = () => {
 
       try {
         const token = localStorage.getItem('adminToken');
-        await fetch(`${API_BASE_URL}/api/admin/menu/bulk`, {
+        const response = await fetch(`${API_BASE_URL}/api/admin/menu/bulk`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(bulkItems)
         });
-        setIsBulkAdding(false);
-        fetchItems();
+        if (response.ok) {
+          toast.success('Bulk items uploaded successfully');
+          setIsBulkAdding(false);
+          fetchItems();
+        } else {
+          toast.error('Bulk upload failed');
+        }
       } catch (err) {
-        console.error(err);
+        toast.error('Error during bulk upload');
       }
     };
     reader.readAsText(file);
@@ -272,31 +288,44 @@ const MenuManager = () => {
 
   const categories = ['All', ...Array.from(new Set(items.map(i => i.category)))];
 
+  // Helper to color-code categories
+  const getCategoryColor = (cat: string) => {
+    switch (cat) {
+      case 'Starters': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'Main Course': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'Desserts': return 'bg-pink-500/10 text-pink-400 border-pink-500/20';
+      case 'Salads': return 'bg-green-500/10 text-green-400 border-green-500/20';
+      case 'Beverages': return 'bg-sky-500/10 text-sky-400 border-sky-500/20';
+      default: return 'bg-gray-500/10 text-gray-300 border-white/10';
+    }
+  };
+
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
+    <div className="space-y-8 animate-fade-in">
+      {/* Header Panel */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-playfair font-bold text-white mb-2">Menu Management</h1>
-          <p className="text-gray-400">Manage Catering & Meal Pack items</p>
+          <h1 className="text-3xl font-playfair font-bold text-white mb-1.5">Menu Management</h1>
+          <p className="text-gray-400 text-sm">Configure standard catalog items, dietary tags, and bulk configurations.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {selectedIds.length > 0 && (
-            <div className="flex gap-2 mr-4 border-r border-white/10 pr-4">
+            <div className="flex items-center gap-2 mr-2 border-r border-white/10 pr-4">
               <button 
                 onClick={() => handleBulkStatus(true)}
-                className="bg-green-500/10 text-green-500 px-4 py-2 rounded-lg font-bold hover:bg-green-500/20 transition-all text-sm"
+                className="btn btn-sm bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/20"
               >
                 Activate ({selectedIds.length})
               </button>
               <button 
                 onClick={() => handleBulkStatus(false)}
-                className="bg-gray-500/10 text-gray-500 px-4 py-2 rounded-lg font-bold hover:bg-gray-500/20 transition-all text-sm"
+                className="btn btn-sm bg-gray-500/10 text-gray-400 hover:bg-white/5 border border-white/10"
               >
                 Deactivate
               </button>
               <button 
-                onClick={handleBulkDelete}
-                className="bg-red-500/10 text-red-500 px-4 py-2 rounded-lg font-bold hover:bg-red-500/20 transition-all text-sm"
+                onClick={() => setConfirmBulkDelete(true)}
+                className="btn btn-sm bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/20"
               >
                 Delete
               </button>
@@ -304,7 +333,7 @@ const MenuManager = () => {
           )}
           <button 
             onClick={() => setIsBulkAdding(true)}
-            className="bg-white/10 text-white px-6 py-2 rounded-lg font-bold hover:bg-white/20 transition-all"
+            className="btn btn-secondary btn-sm"
           >
             Bulk Add
           </button>
@@ -313,237 +342,315 @@ const MenuManager = () => {
               setFormData({ name: '', category: 'Main Course', base_price: 0, weight_ratio_per_10_guests: 1, dietary_tag: 'Veg', packages: [], occasions: [], is_active: true });
               setIsEditing(false); setEditingId(null); setIsAdding(true);
             }}
-            className="bg-tan text-richBlack px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-tan/90 transition-all"
+            className="btn btn-primary btn-sm"
           >
-            <Plus size={20} />
-            Add Item
+            <Plus size={16} /> Add Catalog Item
           </button>
         </div>
       </div>
 
-      
-      {isBulkAdding && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-charcoal p-8 rounded-2xl w-full max-w-md shadow-xl text-center">
-            <h2 className="text-2xl font-bold font-playfair mb-6">Bulk Add Menu Items</h2>
-            <div className="space-y-6">
-              <div>
-                <p className="text-gray-400 mb-2 text-sm">Step 1: Download the CSV template</p>
-                <button onClick={handleDownloadCSV} className="w-full bg-white/10 text-white py-3 rounded-lg hover:bg-white/20 transition-all">Download Template</button>
+      {/* CSV Bulk Upload Modal */}
+      <AnimatePresence>
+        {isBulkAdding && (
+          <div className="modal-overlay" onClick={() => setIsBulkAdding(false)}>
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="modal-box max-w-md p-8 text-center"
+            >
+              <div className="bg-tan/10 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 border border-tan/20">
+                <Layers className="text-tan" size={24} />
               </div>
-              <div>
-                <p className="text-gray-400 mb-2 text-sm">Step 2: Upload filled CSV</p>
-                <input type="file" accept=".csv" onChange={handleFileUpload} className="w-full bg-white/5 border border-white/10 p-2 rounded-lg text-white" />
+              <h2 className="text-2xl font-bold font-playfair mb-2">Bulk Menu Upload</h2>
+              <p className="text-gray-400 text-xs leading-relaxed mb-6">Upload multiple items simultaneously via a standard formatting spreadsheet (.csv).</p>
+              
+              <div className="space-y-4 text-left">
+                <div className="p-4 bg-white/5 rounded-xl border border-white/5">
+                  <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">1. Download and format</p>
+                  <button onClick={handleDownloadCSV} className="w-full btn btn-secondary btn-sm flex items-center justify-center gap-2">
+                    <Download size={14} /> Download CSV Template
+                  </button>
+                </div>
+                <div className="p-4 bg-white/5 rounded-xl border border-white/5">
+                  <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">2. Upload file</p>
+                  <input type="file" accept=".csv" onChange={handleFileUpload} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-tan file:text-richBlack file:cursor-pointer" />
+                </div>
               </div>
-            </div>
-            <div className="mt-8 flex justify-end">
-              <button type="button" onClick={() => setIsBulkAdding(false)} className="px-5 py-2 text-gray-400 hover:text-white">Close</button>
-            </div>
+              <div className="mt-8 flex justify-end">
+                <button type="button" onClick={() => setIsBulkAdding(false)} className="text-gray-500 hover:text-white font-semibold text-sm transition-colors">Close</button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
-      {isAdding && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-charcoal p-8 rounded-2xl w-full max-w-xl shadow-xl">
-            {isEditing ? <h2 className="text-2xl font-bold font-playfair mb-6">Edit Menu Item</h2> : <h2 className="text-2xl font-bold font-playfair mb-6">Add New Menu Item</h2>}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-gray-400 mb-1">Item Name</label>
-                <input 
-                  type="text" required
-                  className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                  value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+      {/* Add / Edit Modal Drawer */}
+      <AnimatePresence>
+        {isAdding && (
+          <div className="modal-overlay" onClick={() => setIsAdding(false)}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              onClick={e => e.stopPropagation()}
+              className="modal-box max-w-xl p-8 max-h-[90vh] overflow-y-auto"
+            >
+              <h2 className="text-2xl font-bold font-playfair mb-6">{isEditing ? 'Edit Catalog Item' : 'New Catalog Item'}</h2>
+              <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-gray-400 mb-1">Category</label>
-                  <select 
-                    className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                    value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}
-                  >
-                    {ALL_CATEGORIES.map(cat => <option key={cat} value={cat} className="bg-charcoal">{cat}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-gray-400 mb-1">Dietary Tag</label>
-                  <select 
-                    className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                    value={formData.dietary_tag} onChange={e => setFormData({...formData, dietary_tag: e.target.value})}
-                  >
-                    <option value="Veg" className="bg-charcoal">Veg</option>
-                    <option value="Non-Veg" className="bg-charcoal">Non-Veg</option>
-                    <option value="Mixed" className="bg-charcoal">Mixed</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-gray-400 mb-1">Base Price (AED)</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1.5">Item Name</label>
                   <input 
-                    type="number" required min="0"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                    value={formData.base_price} onChange={e => setFormData({...formData, base_price: Number(e.target.value)})}
+                    type="text" required
+                    className="input-field"
+                    placeholder="e.g. Garlic Herb Paneer"
+                    value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
                   />
                 </div>
-                <div>
-                  <label className="block text-gray-400 mb-1">Weight/10 Guests</label>
-                  <input 
-                    type="number" required min="0" step="0.1"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                    value={formData.weight_ratio_per_10_guests} onChange={e => setFormData({...formData, weight_ratio_per_10_guests: Number(e.target.value)})}
-                  />
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1.5">Category</label>
+                    <select 
+                      className="input-field"
+                      value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}
+                    >
+                      {ALL_CATEGORIES.map(cat => <option key={cat} value={cat} className="bg-charcoal">{cat}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1.5">Dietary Tag</label>
+                    <select 
+                      className="input-field"
+                      value={formData.dietary_tag} onChange={e => setFormData({...formData, dietary_tag: e.target.value})}
+                    >
+                      <option value="Veg" className="bg-charcoal">Veg</option>
+                      <option value="Non-Veg" className="bg-charcoal">Non-Veg</option>
+                      <option value="Mixed" className="bg-charcoal">Mixed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1.5">Base Price (AED)</label>
+                    <input 
+                      type="number" required min="0"
+                      className="input-field"
+                      placeholder="0.00"
+                      value={formData.base_price} onChange={e => setFormData({...formData, base_price: Number(e.target.value)})}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1.5">Weight (kg/10 guests)</label>
+                    <input 
+                      type="number" required min="0" step="0.01"
+                      className="input-field"
+                      placeholder="1.0"
+                      value={formData.weight_ratio_per_10_guests} onChange={e => setFormData({...formData, weight_ratio_per_10_guests: Number(e.target.value)})}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-400 mb-2">Packages</label>
-                  <div className="space-y-2">
-                    {ALL_PACKAGES.map(pkg => (
-                      <label key={pkg} className="flex items-center gap-2 text-white">
-                        <input 
-                          type="checkbox" 
-                          checked={formData.packages.includes(pkg)}
-                          onChange={e => {
-                            const newPkgs = e.target.checked 
-                              ? [...formData.packages, pkg] 
-                              : formData.packages.filter(p => p !== pkg);
-                            setFormData({...formData, packages: newPkgs});
-                          }}
-                          className="w-4 h-4 bg-white/5 border border-white/10 rounded"
-                        />
-                        {pkg}
-                      </label>
-                    ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Include in Packages</label>
+                    <div className="space-y-2.5">
+                      {ALL_PACKAGES.map(pkg => (
+                        <label key={pkg} className="flex items-center gap-2.5 text-sm cursor-pointer select-none">
+                          <input 
+                            type="checkbox" 
+                            checked={formData.packages.includes(pkg)}
+                            onChange={e => {
+                              const newPkgs = e.target.checked 
+                                ? [...formData.packages, pkg] 
+                                : formData.packages.filter(p => p !== pkg);
+                              setFormData({...formData, packages: newPkgs});
+                            }}
+                            className="w-4.5 h-4.5 bg-white/5 border border-white/10 rounded focus:ring-0 text-tan"
+                          />
+                          <span className="text-gray-300 font-medium">{pkg}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Suitable Occasions</label>
+                    <div className="space-y-2 h-32 overflow-y-auto pr-1 custom-scrollbar">
+                      {ALL_OCCASIONS.map(occ => (
+                        <label key={occ} className="flex items-center gap-2.5 text-sm cursor-pointer select-none">
+                          <input 
+                            type="checkbox" 
+                            checked={formData.occasions.includes(occ)}
+                            onChange={e => {
+                              const newOcc = e.target.checked 
+                                ? [...formData.occasions, occ] 
+                                : formData.occasions.filter(o => o !== occ);
+                              setFormData({...formData, occasions: newOcc});
+                            }}
+                            className="w-4.5 h-4.5 bg-white/5 border border-white/10 rounded focus:ring-0 text-tan"
+                          />
+                          <span className="text-gray-300 font-medium text-xs">{occ}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-gray-400 mb-2">Occasions</label>
-                  <div className="space-y-2 h-32 overflow-y-auto">
-                    {ALL_OCCASIONS.map(occ => (
-                      <label key={occ} className="flex items-center gap-2 text-white text-sm">
-                        <input 
-                          type="checkbox" 
-                          checked={formData.occasions.includes(occ)}
-                          onChange={e => {
-                            const newOcc = e.target.checked 
-                              ? [...formData.occasions, occ] 
-                              : formData.occasions.filter(o => o !== occ);
-                            setFormData({...formData, occasions: newOcc});
-                          }}
-                          className="w-4 h-4 bg-white/5 border border-white/10 rounded"
-                        />
-                        {occ}
-                      </label>
-                    ))}
-                  </div>
+
+                <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-white/5">
+                  <button type="button" onClick={() => setIsAdding(false)} className="btn btn-secondary">Cancel</button>
+                  <button type="submit" className="btn btn-primary">Save Item Changes</button>
                 </div>
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setIsAdding(false)} className="px-5 py-2 text-gray-400 hover:text-white">Cancel</button>
-                <button type="submit" className="bg-tan text-richBlack px-6 py-2 rounded-lg font-bold hover:bg-tan/90">Save Item</button>
-              </div>
-            </form>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
-      {/* Filters & Search */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
+      {/* Filters, Categories and Search */}
+      <div className="bg-[#2D0000] border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between shadow-md">
+        <div className="relative w-full md:flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
           <input
             type="text"
-            placeholder="Search items..."
-            className="w-full bg-charcoal border border-white/10 rounded-lg py-2 pl-10 pr-4 focus:ring-2 focus:ring-tan focus:outline-none"
+            placeholder="Search catalog items..."
+            className="w-full bg-[#4A0000]/40 border border-white/10 rounded-xl py-3 pl-11 pr-4 focus:ring-2 focus:ring-tan/30 focus:outline-none transition-all placeholder:text-gray-600 text-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2">
-          <Filter className="text-gray-500 w-5 h-5" />
+        <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
+          <Filter className="text-gray-500 w-5 h-5 hidden sm:block" />
           <select 
-            className="bg-charcoal border border-white/10 rounded-lg py-2 px-4 focus:outline-none"
+            className="w-full sm:w-48 bg-[#4A0000]/40 border border-white/10 rounded-xl py-3 px-4 focus:outline-none text-sm"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           >
-            {categories.map(cat => <option key={cat} value={cat} className="bg-[#0A0A0A]">{cat}</option>)}
+            {categories.map(cat => <option key={cat} value={cat} className="bg-charcoal">{cat}</option>)}
           </select>
         </div>
       </div>
 
-      {/* Items Table */}
-      <div className="bg-charcoal border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-        <table className="w-full text-left">
-          <thead className="bg-white/5 border-b border-white/10">
-            <tr>
-              <th className="px-6 py-4">
-                <input 
-                  type="checkbox" 
-                  className="w-4 h-4 bg-white/5 border border-white/10 rounded" 
-                  checked={selectedIds.length === filteredItems.length && filteredItems.length > 0}
-                  onChange={toggleSelectAll}
-                />
-              </th>
-              <th className="px-6 py-4 font-semibold">Item Name</th>
-              <th className="px-6 py-4 font-semibold">Category</th>
-              <th className="px-6 py-4 font-semibold">Base Price</th>
-              <th className="px-6 py-4 font-semibold">Dietary</th>
-              <th className="px-6 py-4 font-semibold">Status</th>
-              <th className="px-6 py-4 font-semibold text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {loading ? (
-              <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500">Loading items...</td></tr>
-            ) : filteredItems.length === 0 ? (
-              <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500">No items found</td></tr>
-            ) : (
-              filteredItems.map(item => (
-                <tr key={item._id} className={`hover:bg-white/5 transition-colors group ${selectedIds.includes(item._id) ? 'bg-white/5' : ''}`}>
-                  <td className="px-6 py-4">
-                    <input 
-                      type="checkbox" 
-                      className="w-4 h-4 bg-white/5 border border-white/10 rounded" 
-                      checked={selectedIds.includes(item._id)}
-                      onChange={() => toggleSelect(item._id)}
-                    />
-                  </td>
-                  <td className="px-6 py-4 font-medium">{item.name}</td>
-                  <td className="px-6 py-4">
-                    <span className="bg-white/10 px-2 py-1 rounded text-xs">{item.category}</span>
-                  </td>
-                  <td className="px-6 py-4">AED {item.base_price}</td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs ${item.dietary_tag === 'Veg' ? 'text-green-400' : 'text-red-400'}`}>
-                      {item.dietary_tag}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button 
-                      onClick={() => handleToggleActive(item)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${item.is_active ? 'bg-green-500' : 'bg-gray-500'}`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${item.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
-                    <span className="ml-2 text-sm text-gray-400">{item.is_active ? 'Active' : 'Inactive'}</span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => handleEdit(item)} className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-all">
-                        <Edit2 size={16} />
-                      </button>
-                      <button onClick={() => handleDelete(item._id)} className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-red-400 transition-all">
-                        <Trash2 size={16} />
-                      </button>
+      {/* Items Table container */}
+      <div className="bg-[#2D0000] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse admin-table">
+            <thead>
+              <tr className="bg-white/5 border-b border-white/10 text-xs font-bold uppercase tracking-wider text-gray-400">
+                <th className="px-6 py-4 w-12">
+                  <input 
+                    type="checkbox" 
+                    className="w-4.5 h-4.5 bg-white/5 border border-white/10 rounded text-tan focus:ring-0 cursor-pointer" 
+                    checked={selectedIds.length === filteredItems.length && filteredItems.length > 0}
+                    onChange={toggleSelectAll}
+                  />
+                </th>
+                <th className="px-6 py-4">Item Name</th>
+                <th className="px-6 py-4">Category</th>
+                <th className="px-6 py-4">Base Price</th>
+                <th className="px-6 py-4">Weight Ratio</th>
+                <th className="px-6 py-4">Dietary</th>
+                <th className="px-6 py-4">Active Status</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-sm">
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-16 text-center text-gray-500 italic">
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-tan animate-ping" /> Loading catalog items...
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : filteredItems.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-16 text-center text-gray-500 italic">
+                    No catalog items found matching your filters.
+                  </td>
+                </tr>
+              ) : (
+                filteredItems.map(item => (
+                  <tr key={item._id} className={`transition-colors hover:bg-white/5 ${selectedIds.includes(item._id) ? 'bg-white/5' : ''}`}>
+                    <td className="px-6 py-4">
+                      <input 
+                        type="checkbox" 
+                        className="w-4.5 h-4.5 bg-white/5 border border-white/10 rounded text-tan focus:ring-0 cursor-pointer" 
+                        checked={selectedIds.includes(item._id)}
+                        onChange={() => toggleSelect(item._id)}
+                      />
+                    </td>
+                    <td className="px-6 py-4 font-semibold text-white">{item.name}</td>
+                    <td className="px-6 py-4">
+                      <span className={`badge border ${getCategoryColor(item.category)}`}>
+                        {item.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-bold text-tan">{formatAED(item.base_price)}</td>
+                    <td className="px-6 py-4 text-xs text-gray-400">{((item as any).weight_ratio_per_10_guests || 1).toFixed(2)}kg <span className="text-gray-600">/ 10 pax</span></td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${
+                        item.dietary_tag === 'Veg' ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${item.dietary_tag === 'Veg' ? 'bg-green-400' : 'bg-red-400'}`} />
+                        {item.dietary_tag}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2.5">
+                        <button 
+                          onClick={() => handleToggleActive(item)}
+                          className={`relative inline-flex h-5.5 w-10.5 items-center rounded-full transition-colors cursor-pointer ${
+                            item.is_active ? 'bg-green-500' : 'bg-gray-500'
+                          }`}
+                        >
+                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                            item.is_active ? 'translate-x-5.5' : 'translate-x-1'
+                          }`} />
+                        </button>
+                        <span className="text-xs text-gray-500 font-semibold uppercase">{item.is_active ? 'Active' : 'Muted'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-1.5">
+                        <button 
+                          onClick={() => handleEdit(item)} 
+                          className="btn btn-icon bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white"
+                          title="Edit Item"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button 
+                          onClick={() => setConfirmDeleteId(item._id)} 
+                          className="btn btn-icon bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300"
+                          title="Delete Item"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* Confirmation Dialogs */}
+      <ConfirmModal 
+        isOpen={confirmDeleteId !== null}
+        title="Delete Menu Item"
+        message="Are you sure you want to permanently delete this catalog item? This will remove it from all suggested menus and categories."
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+
+      <ConfirmModal 
+        isOpen={confirmBulkDelete}
+        title={`Delete ${selectedIds.length} Items`}
+        message={`Are you sure you want to permanently delete all ${selectedIds.length} selected items? This action is irreversible.`}
+        onConfirm={executeBulkDelete}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
     </div>
   );
 };

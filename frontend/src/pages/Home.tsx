@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, Star, Clock, MapPin } from 'lucide-react';
+import { ArrowRight, Star, Clock, MapPin, Sparkles, ShieldCheck, CalendarDays } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import LeadModal from '../components/LeadModal';
@@ -21,152 +21,112 @@ const Home = () => {
     }
   }, []);
 
-  return (
-    <div className="pt-0"> {/* 👈 pushes everything below fixed header */}
+  const highlights = [
+    { icon: Sparkles, title: 'Curated menus', text: 'Elegant packages tailored for birthdays, weddings, and corporate gatherings.' },
+    { icon: ShieldCheck, title: 'Reliable delivery', text: 'Professional service, punctual arrival, and premium finishing touches.' },
+    { icon: CalendarDays, title: 'Flexible planning', text: 'Book around your calendar with clear pricing and simple confirmations.' },
+  ];
 
+  return (
+    <div className="pt-0">
       {showLeadModal && <LeadModal onClose={() => setShowLeadModal(false)} />}
 
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center">
-
-        {/* Background */}
+      <section className="relative flex min-h-screen items-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-black/35 z-10" />
-          <img
-            src={heroImage}
-            alt="Luxury Catering"
-            className="hidden md:block w-full h-full object-cover"
-          />
-          <img
-            src={heroMobileImage}
-            alt="Luxury Catering"
-            className="block md:hidden w-full h-full object-cover"
-          />
+          <div className="absolute inset-0 z-10 bg-[linear-gradient(90deg,rgba(0,0,0,0.82),rgba(0,0,0,0.35))]" />
+          <img src={heroImage} alt="Luxury Catering" className="hidden h-full w-full object-cover md:block" />
+          <img src={heroMobileImage} alt="Luxury Catering" className="block h-full w-full object-cover md:hidden" />
         </div>
 
-        {/* Content */}
-        <div className="max-w-7xl mx-auto px-4 relative z-20 w-full flex justify-center text-center pt-32 pb-20 md:pt-0 md:pb-0">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="max-w-4xl"
-          >
-            <h1 className="text-4xl md:text-7xl font-playfair font-bold mb-6 text-[#FFD700] leading-[1.2] drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]">
-              Culinary <br className="hidden md:block" />
-              Excellence <br className="hidden md:block" />
-              Tailored For You.
+        <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-center px-4 pb-20 pt-32 sm:px-6 md:pt-0 md:pb-0">
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="max-w-5xl text-center">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-tan/30 bg-white/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-tan backdrop-blur-md">
+              <Sparkles size={13} /> Luxury catering, simplified
+            </div>
+            <h1 className="text-4xl font-playfair font-bold leading-[1.05] text-[#FFD88A] sm:text-5xl md:text-7xl">
+              Beautiful food experiences for every celebration.
             </h1>
-
-            <p className="text-lg md:text-2xl text-[#FFD700] mb-10 font-inter leading-relaxed drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)] mx-auto max-w-3xl px-4 md:px-0">
-              Experience the finest catering services in Dubai and Sharjah. From intimate gatherings to grand celebrations, we bring luxury dining to your doorstep.
+            <p className="mx-auto mt-6 max-w-3xl text-base leading-8 text-white/85 sm:text-lg md:text-xl">
+              From intimate dinners to custom corporate spreads, Cater Raja makes booking, styling, and delivery feel effortless from the very first click.
             </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link
-                to="/book"
-                className="w-full sm:w-auto bg-[#C9A05C] text-[#4A0000] flex items-center justify-center gap-2 px-8 py-4 rounded-full text-lg font-bold hover:scale-105 transition-transform shadow-[0_0_40px_rgba(201,160,92,0.4)]"
-              >
-                Start Booking <ArrowRight size={20} />
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link to="/book" className="flex w-full items-center justify-center gap-2 rounded-full bg-tan px-8 py-4 text-lg font-bold text-richBlack shadow-[0_0_40px_rgba(201,160,92,0.35)] transition-all hover:-translate-y-0.5 hover:bg-tan/90 sm:w-auto">
+                Start booking <ArrowRight size={18} />
               </Link>
-
-              <Link
-                to="/meal-packs"
-                className="w-full sm:w-auto bg-white/10 backdrop-blur-md border border-white/30 px-8 py-4 rounded-full text-lg font-bold text-white text-center hover:bg-white/20 transition-all shadow-xl"
-              >
-                Quick Meal Packs
+              <Link to="/meal-packs" className="flex w-full items-center justify-center rounded-full border border-white/20 bg-white/10 px-8 py-4 text-lg font-semibold text-white backdrop-blur-md transition-all hover:bg-white/20 sm:w-auto">
+                Explore meal packs
               </Link>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* About Section */}
-      <section className="py-24 bg-richBlack border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-
-          {/* Images Left - Layered Composition */}
-          <div className="relative h-[500px] md:h-[600px] w-full mt-10 lg:mt-0">
-            {/* Base/Main Image - Food 2 (Big) */}
-            <img
-              src={food2}
-              alt="Main Food"
-              className="absolute w-[65%] h-[70%] object-cover rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] z-10"
-              style={{ left: '15%', top: '15%' }}
-            />
-            {/* Top Left Image - Food 1 (Square) */}
-            <img
-              src={food1}
-              alt="Food 1"
-              className="absolute w-[35%] aspect-square object-cover rounded-2xl shadow-2xl z-20 border-4 border-richBlack"
-              style={{ left: '0%', top: '0%' }}
-            />
-            {/* Top Right Image - Food 3 (Square) */}
-            <img
-              src={food3}
-              alt="Food 3"
-              className="absolute w-[35%] aspect-square object-cover rounded-2xl shadow-2xl z-20 border-4 border-richBlack"
-              style={{ right: '0%', top: '10%' }}
-            />
-            {/* Bottom Left Image - Catering Team (Square) */}
-            <img
-              src={cateringTeam}
-              alt="Catering Team"
-              className="absolute w-[40%] aspect-square object-cover rounded-2xl shadow-2xl z-30 border-4 border-richBlack"
-              style={{ left: '5%', bottom: '0%' }}
-            />
+      <section className="border-t border-white/10 bg-richBlack py-20">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+          <div className="relative h-[460px] sm:h-[520px]">
+            <img src={food2} alt="Main menu spread" className="absolute left-[12%] top-[14%] h-[68%] w-[64%] rounded-[28px] object-cover shadow-[0_20px_60px_rgba(0,0,0,0.5)]" />
+            <img src={food1} alt="Chef plating" className="absolute left-[1%] top-[2%] h-[30%] w-[28%] rounded-[24px] border-4 border-richBlack object-cover shadow-2xl" />
+            <img src={food3} alt="Elegant catering display" className="absolute right-[2%] top-[8%] h-[30%] w-[28%] rounded-[24px] border-4 border-richBlack object-cover shadow-2xl" />
+            <img src={cateringTeam} alt="Catering team" className="absolute bottom-[1%] left-[6%] h-[32%] w-[34%] rounded-[24px] border-4 border-richBlack object-cover shadow-2xl" />
           </div>
 
-          {/* Content Right */}
-          <div className="pl-0 lg:pl-8">
-            <h2 className="text-sm font-bold text-tan tracking-[0.2em] uppercase mb-4">About</h2>
-            <h3 className="text-4xl md:text-5xl font-playfair font-bold text-white mb-6 leading-tight">
-              Cater Raja – Your Complete Catering Solution, Simplified
-            </h3>
-            <div className="space-y-6 text-gray-300 font-inter leading-relaxed text-lg">
-              <p>
-                Planning a party, corporate event or daily meal service should be exciting—not stressful. Cater Raja is a smart, end-to-end catering platform designed to make ordering food for any occasion seamless, customizable, and efficient.
-              </p>
-              <p>
-                Whether you're hosting an intimate house party, organizing a corporate gathering, or setting up recurring meal plans, our platform gives you complete control—from menu creation to budget planning—all in one place.
-              </p>
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-tan">About Cater Raja</p>
+            <h2 className="mt-4 text-3xl font-playfair font-bold text-white sm:text-4xl">A polished catering experience from first message to final delivery.</h2>
+            <div className="mt-6 space-y-4 text-base leading-8 text-gray-300">
+              <p>Planning your event should feel exciting, not complicated. Our platform brings together menu selection, portion planning, service style decisions, and secure confirmations in one clear workflow.</p>
+              <p>Whether you are hosting a house party, a corporate lunch, or a large celebration, we make it easier to choose premium dishes, keep budgets in check, and schedule everything with confidence.</p>
             </div>
-            <Link
-              to="/about"
-              className="mt-10 inline-flex items-center gap-2 bg-[#C9A05C] text-richBlack px-8 py-3 rounded-full hover:bg-[#B58E4E] transition-all font-bold w-fit"
-            >
-              Read More <ArrowRight size={20} />
+            <Link to="/about" className="mt-8 inline-flex items-center gap-2 rounded-full bg-tan px-7 py-3 font-semibold text-richBlack transition-all hover:-translate-y-0.5 hover:bg-tan/90">
+              Discover more <ArrowRight size={18} />
             </Link>
           </div>
-
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-20 bg-richBlack">
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-12">
-
-          <div className="glass-card p-8 text-center">
-            <Star className="text-tan mx-auto mb-4" size={40} />
-            <h3 className="text-3xl font-playfair font-bold mb-2">4.9/5</h3>
-            <p className="text-gray-400">Average Rating</p>
+      <section className="bg-[#2D0000] py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-tan">Why guests love it</p>
+              <h3 className="mt-2 text-3xl font-playfair font-bold text-white">Every detail is designed to feel effortless.</h3>
+            </div>
+            <Link to="/meal-packs" className="text-sm font-semibold text-tan transition-colors hover:text-tan/80">View flexible meal packs →</Link>
           </div>
 
-          <div className="glass-card p-8 text-center">
-            <Clock className="text-tan mx-auto mb-4" size={40} />
-            <h3 className="text-3xl font-playfair font-bold mb-2">10k+</h3>
-            <p className="text-gray-400">Events Served</p>
+          <div className="grid gap-5 md:grid-cols-3">
+            {highlights.map(({ icon: Icon, title, text }) => (
+              <motion.div key={title} whileHover={{ y: -4, scale: 1.01 }} className="rounded-[24px] border border-white/10 bg-white/5 p-6 shadow-[0_20px_50px_rgba(0,0,0,0.2)]">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-tan/10 text-tan">
+                  <Icon size={22} />
+                </div>
+                <h4 className="text-xl font-semibold text-white">{title}</h4>
+                <p className="mt-3 text-sm leading-7 text-gray-300">{text}</p>
+              </motion.div>
+            ))}
           </div>
-
-          <div className="glass-card p-8 text-center">
-            <MapPin className="text-tan mx-auto mb-4" size={40} />
-            <h3 className="text-3xl font-playfair font-bold mb-2">UAE</h3>
-            <p className="text-gray-400">Dubai & Sharjah</p>
-          </div>
-
         </div>
       </section>
 
+      <section className="bg-richBlack py-20">
+        <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 md:grid-cols-3">
+          <div className="rounded-[24px] border border-white/10 bg-white/5 p-8 text-center">
+            <Star className="mx-auto mb-4 text-tan" size={38} />
+            <h3 className="text-3xl font-playfair font-bold text-white">4.9/5</h3>
+            <p className="mt-2 text-gray-400">Average rating from happy clients</p>
+          </div>
+          <div className="rounded-[24px] border border-white/10 bg-white/5 p-8 text-center">
+            <Clock className="mx-auto mb-4 text-tan" size={38} />
+            <h3 className="text-3xl font-playfair font-bold text-white">10k+</h3>
+            <p className="mt-2 text-gray-400">Events served across the UAE</p>
+          </div>
+          <div className="rounded-[24px] border border-white/10 bg-white/5 p-8 text-center">
+            <MapPin className="mx-auto mb-4 text-tan" size={38} />
+            <h3 className="text-3xl font-playfair font-bold text-white">Dubai & Sharjah</h3>
+            <p className="mt-2 text-gray-400">Coverage across key service zones</p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

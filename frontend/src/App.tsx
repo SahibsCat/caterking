@@ -1,4 +1,5 @@
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import Home from './pages/Home';
 import BookingFlow from './pages/BookingFlow';
 import MealPacks from './pages/MealPacks';
@@ -19,6 +20,19 @@ import OccasionMenuManager from './pages/admin/OccasionMenuManager';
 import MealBoxMenuManager from './pages/admin/MealBoxMenuManager';
 import CustomerManager from './pages/admin/CustomerManager';
 
+// Shared Components
+import { ToastContainer } from './components/Toast';
+import { useLocation } from 'react-router-dom';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
+
 // Protection Guard
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = !!localStorage.getItem('adminToken');
@@ -26,16 +40,36 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  useEffect(() => {
+    const token = localStorage.getItem('adminToken');
+    if (token && window.location.hash.startsWith('#/admin') && !window.location.hash.includes('/login')) {
+      const authCheck = async () => {
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/orders`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (!res.ok) {
+            localStorage.removeItem('adminToken');
+            window.location.hash = '#/admin/login';
+          }
+        } catch {
+          // Ignore auth check failures and keep the UI open if the backend is temporarily unavailable.
+        }
+      };
+      authCheck();
+    }
+  }, []);
   return (
     <Router>
+      <ScrollToTop />
       <div className="min-h-screen bg-richBlack text-white font-inter">
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<><Header /><main><Home /></main><Footer /></>} />
-          <Route path="/book" element={<><Header /><main><BookingFlow /></main><Footer /></>} />
-          <Route path="/meal-packs" element={<><Header /><main><MealPacks /></main><Footer /></>} />
-          <Route path="/about" element={<><Header /><main><About /></main><Footer /></>} />
-          <Route path="/policies" element={<><Header /><main><Policies /></main><Footer /></>} />
+          <Route path="/" element={<><Header /><main className="min-h-screen pt-20"><Home /></main><Footer /></>} />
+          <Route path="/book" element={<><Header /><main className="min-h-screen pt-20"><BookingFlow /></main><Footer /></>} />
+          <Route path="/meal-packs" element={<><Header /><main className="min-h-screen pt-20"><MealPacks /></main><Footer /></>} />
+          <Route path="/about" element={<><Header /><main className="min-h-screen pt-20"><About /></main><Footer /></>} />
+          <Route path="/policies" element={<><Header /><main className="min-h-screen pt-20"><Policies /></main><Footer /></>} />
 
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
@@ -54,6 +88,7 @@ function App() {
             <Route path="customers" element={<CustomerManager />} />
           </Route>
         </Routes>
+        <ToastContainer />
       </div>
     </Router>
   );

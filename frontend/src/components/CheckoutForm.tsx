@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
+import { formatAED } from '../utils/currency';
 
 interface CheckoutFormProps {
   onSuccess: () => void;
@@ -51,7 +52,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, amount }) => {
         disabled={processing || !stripe || !elements}
         className="w-full bg-tan text-richBlack py-4 rounded-full font-bold hover:scale-105 transition-all text-lg disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {processing ? 'Processing...' : `Pay AED ${amount.toFixed(2)}`}
+        {processing ? 'Processing...' : `Pay ${formatAED(amount)} (including vat)`}
       </button>
     </form>
   );
