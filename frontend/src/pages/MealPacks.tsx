@@ -1,12 +1,60 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { API_BASE_URL } from '../config';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { ShoppingBag, PhoneCall, Sparkles, Check } from 'lucide-react';
+import { ShoppingBag, PhoneCall, Sparkles, Check, Loader2, Navigation } from 'lucide-react';
 import { formatAED } from '../utils/currency';
 import SuccessModal from '../components/SuccessModal';
 import { toast } from '../components/Toast';
 import Calendar from '../components/Calendar';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+import markerIconPng from 'leaflet/dist/images/marker-icon.png';
+import markerShadowPng from 'leaflet/dist/images/marker-shadow.png';
+
+const DefaultIcon = L.icon({
+  iconUrl: markerIconPng,
+  shadowUrl: markerShadowPng,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+const ChangeMapView = ({ center }: { center: [number, number] }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, 15);
+  }, [center, map]);
+  return null;
+};
+
+const DraggableMarker = ({ center, onPositionChange }: { center: [number, number], onPositionChange: (lat: number, lng: number) => void }) => {
+  const markerRef = useRef<L.Marker>(null);
+  const eventHandlers = useMemo(
+    () => ({
+      dragend() {
+        const marker = markerRef.current;
+        if (marker != null) {
+          const latLng = marker.getLatLng();
+          onPositionChange(latLng.lat, latLng.lng);
+        }
+      },
+    }),
+    [onPositionChange],
+  );
+
+  return (
+    <Marker
+      draggable={true}
+      eventHandlers={eventHandlers}
+      position={center}
+      ref={markerRef}
+    />
+  );
+};
 
 const mealPacksData = [
   { 
@@ -64,7 +112,7 @@ const MealPacks = () => {
   const [availableDates, setAvailableDates] = useState<{ _id: string, date: string }[]>([]);
   const [quickOrderData, setQuickOrderData] = useState({
     date: '',
-    quantity: 5,
+    quantity: 20,
     name: '',
     mobile: '',
     email: '',
@@ -73,6 +121,8 @@ const MealPacks = () => {
     area: '',
     landmark: ''
   });
+  const [isLocating, setIsLocating] = useState(false);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([25.2048, 55.2708]);
   const [errors, setErrors] = useState<string[]>([]);
 
   // Success Modal State
@@ -112,6 +162,69 @@ const MealPacks = () => {
       console.error(err);
     } finally {
       setLoadingPacks(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const detectLocation = async () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          setMapCenter([latitude, longitude]);
+          await reverseGeocode(latitude, longitude);
+          toast.success('Location detected and address filled');
+        } catch {
+          toast.error('Could not fetch address. Please fill manually.');
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      () => {
+        toast.error('Location access denied. Please fill the address manually.');
+        setIsLocating(false);
+      }
+    );
+  };
+
+  const reverseGeocode = async (lat: number, lon: number) => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+      const data = await res.json();
+      const addr = data.address || {};
+      setQuickOrderData(prev => ({
+        ...prev,
+        flatVilla: addr.house_number || addr.building || prev.flatVilla || '',
+        street: addr.road || addr.street || '',
+        area: addr.suburb || addr.neighbourhood || addr.district || addr.city || '',
+        landmark: addr.amenity || addr.tourism || prev.landmark || '',
+      }));
+    } catch {
+      toast.error('Could not fetch address details for this location');
+    }
+  };
+
+  const geocodeAddress = async () => {
+    const { street, area } = quickOrderData;
+    const query = [street, area, 'Dubai'].filter(Boolean).join(', ');
+    if (!query || query === 'Dubai') return;
+    
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          const lat = parseFloat(data[0].lat);
+          const lon = parseFloat(data[0].lon);
+          setMapCenter([lat, lon]);
+        }
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -197,7 +310,7 @@ const MealPacks = () => {
         // Reset form
         setQuickOrderData({
           date: '',
-          quantity: 5,
+          quantity: 20,
           name: '',
           mobile: '',
           email: '',
@@ -383,30 +496,36 @@ const MealPacks = () => {
       </div>
 
       {/* Quick Order Modal */}
-      <AnimatePresence>
-        {isQuickOrderOpen && (
-          <div className="modal-overlay z-[1100]" onClick={() => setIsQuickOrderOpen(false)}>
+      {createPortal(
+        <AnimatePresence>
+          {isQuickOrderOpen && (
+            <div className="modal-overlay z-[1100]" onClick={() => setIsQuickOrderOpen(false)}>
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 16 }}
               onClick={e => e.stopPropagation()}
-              className="modal-box max-w-lg p-8 max-h-[85vh] overflow-y-auto"
+              className="modal-box w-full max-w-lg flex flex-col mx-0 sm:mx-4"
             >
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h3 className="text-2xl font-bold font-playfair text-white">Place Quick Order</h3>
-                  <p className="text-xs text-gray-400 mt-1">{selectedPackForOrder?.name} • {selectedPackForOrder?.foodPreference} Selection</p>
+              {/* Sticky Header */}
+              <div className="sticky top-0 z-20 bg-[#2D0000] px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 border-b border-white/10 rounded-t-[var(--radius-xl)] shrink-0">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-bold font-playfair text-white">Place Quick Order</h3>
+                    <p className="text-xs text-gray-400 mt-1">{selectedPackForOrder?.name} • {selectedPackForOrder?.foodPreference} Selection</p>
+                  </div>
+                  <button 
+                    onClick={() => setIsQuickOrderOpen(false)}
+                    className="rounded-full border border-white/10 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 transition-colors hover:text-white hover:bg-white/10 shrink-0"
+                    aria-label="Close"
+                  >
+                    ✕
+                  </button>
                 </div>
-                <button 
-                  onClick={() => setIsQuickOrderOpen(false)}
-                  className="text-gray-500 hover:text-white p-1"
-                >
-                  ✕
-                </button>
               </div>
               
-              <div className="space-y-6">
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Date Input */}
                   <div className="sm:col-span-2">
@@ -418,7 +537,7 @@ const MealPacks = () => {
                               const dateObj = new Date(d.date);
                               const today = new Date();
                               const diffHrs = (dateObj.getTime() - today.getTime()) / (1000 * 60 * 60);
-                              return diffHrs >= 24;
+                              return diffHrs >= 48;
                             })
                             .map(d => d.date)
                           }
@@ -433,11 +552,11 @@ const MealPacks = () => {
 
                   {/* Quantity Selector */}
                   <div className="sm:col-span-2">
-                    <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-2 ml-1">Quantity (Min 5 packs)</label>
+                    <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-2 ml-1">Quantity (Min 20 packs, steps of 5)</label>
                     <div className="flex items-center gap-3">
                       <button 
                         type="button"
-                        onClick={() => setQuickOrderData({...quickOrderData, quantity: Math.max(5, quickOrderData.quantity - 1)})}
+                        onClick={() => setQuickOrderData({...quickOrderData, quantity: Math.max(20, quickOrderData.quantity - 5)})}
                         className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 text-white font-bold cursor-pointer transition-colors"
                       >
                         -
@@ -447,7 +566,7 @@ const MealPacks = () => {
                       </div>
                       <button 
                         type="button"
-                        onClick={() => setQuickOrderData({...quickOrderData, quantity: quickOrderData.quantity + 1})}
+                        onClick={() => setQuickOrderData({...quickOrderData, quantity: quickOrderData.quantity + 5})}
                         className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 text-white font-bold cursor-pointer transition-colors"
                       >
                         +
@@ -500,8 +619,12 @@ const MealPacks = () => {
                   </div>
 
                   {/* Address Section */}
-                  <div className="sm:col-span-2 pt-2 border-t border-white/5">
+                  <div className="sm:col-span-2 pt-2 border-t border-white/5 flex items-center justify-between">
                     <span className="text-[10px] uppercase tracking-wider font-bold text-tan">Delivery Location Address</span>
+                    <button type="button" onClick={detectLocation} disabled={isLocating} className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-tan bg-tan/10 hover:bg-tan/20 px-3 py-1.5 rounded-lg transition-colors border border-tan/20">
+                      {isLocating ? <Loader2 size={12} className="animate-spin" /> : <Navigation size={12} />}
+                      {isLocating ? 'Locating...' : 'Detect location'}
+                    </button>
                   </div>
 
                   {/* Flat / Villa */}
@@ -529,6 +652,7 @@ const MealPacks = () => {
                           setQuickOrderData({...quickOrderData, street: e.target.value});
                           setErrors(errors.filter(err => err !== 'street'));
                       }}
+                      onBlur={geocodeAddress}
                     />
                   </div>
 
@@ -543,6 +667,7 @@ const MealPacks = () => {
                           setQuickOrderData({...quickOrderData, area: e.target.value});
                           setErrors(errors.filter(err => err !== 'area'));
                       }}
+                      onBlur={geocodeAddress}
                     />
                   </div>
 
@@ -555,6 +680,21 @@ const MealPacks = () => {
                       value={quickOrderData.landmark}
                       onChange={(e) => setQuickOrderData({...quickOrderData, landmark: e.target.value})}
                     />
+                  </div>
+
+                  {/* Map */}
+                  <div className="sm:col-span-2 rounded-xl overflow-hidden border border-white/10 h-44 sm:h-52 lg:h-60 z-0 relative">
+                    <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
+                      <TileLayer
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      />
+                      <ChangeMapView center={mapCenter} />
+                      <DraggableMarker center={mapCenter} onPositionChange={(lat, lng) => {
+                        setMapCenter([lat, lng]);
+                        reverseGeocode(lat, lng);
+                      }} />
+                    </MapContainer>
                   </div>
                 </div>
 
@@ -569,18 +709,24 @@ const MealPacks = () => {
                       <span className="text-[10px] text-gray-500 block">including vat</span>
                     </div>
                   </div>
-                  <button 
-                    onClick={handleProceedToPayment}
-                    className="w-full btn btn-primary py-4 rounded-xl text-base cursor-pointer"
-                  >
-                    Confirm Delivery
-                  </button>
                 </div>
+              </div>
+
+              {/* Sticky Footer */}
+              <div className="sticky bottom-0 z-20 bg-[#2D0000] px-4 sm:px-6 lg:px-8 py-4 border-t border-white/10 rounded-b-[var(--radius-xl)] shrink-0">
+                <button 
+                  onClick={handleProceedToPayment}
+                  className="w-full bg-tan hover:bg-tan/90 text-richBlack font-bold py-3.5 px-4 rounded-xl transition-all cursor-pointer min-h-[44px]"
+                >
+                  Confirm Delivery
+                </button>
               </div>
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Success Notification Modal */}
       <SuccessModal 

@@ -32,7 +32,7 @@ const Calendar: React.FC<CalendarProps> = ({ availableDates, selectedDate, onSel
 
   const days = [];
   for (let i = 0; i < firstDay; i++) {
-    days.push(<div key={`empty-${i}`} className="p-2"></div>);
+    days.push(<div key={`empty-${i}`} className="aspect-square" />);
   }
 
   for (let i = 1; i <= daysInMonth; i++) {
@@ -46,7 +46,7 @@ const Calendar: React.FC<CalendarProps> = ({ availableDates, selectedDate, onSel
         key={dateStr}
         disabled={!isAvailable}
         onClick={() => isAvailable && onSelect(dateStr)}
-        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
+        className={`aspect-square w-full rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${
           isSelected 
             ? 'bg-tan text-richBlack scale-110 shadow-md' 
             : isAvailable 
@@ -60,26 +60,26 @@ const Calendar: React.FC<CalendarProps> = ({ availableDates, selectedDate, onSel
   }
 
   return (
-    <div className="bg-black/20 border border-white/10 rounded-2xl p-4 w-full max-w-sm mx-auto">
-      <div className="flex justify-between items-center mb-4">
-        <button onClick={prevMonth} className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors">
-          <ChevronLeft size={20} />
+    <div className="bg-black/20 border border-white/10 rounded-2xl p-3 sm:p-4 w-full max-w-sm mx-auto">
+      <div className="flex justify-between items-center mb-3 sm:mb-4">
+        <button onClick={prevMonth} className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center">
+          <ChevronLeft size={18} />
         </button>
-        <div className="text-white font-semibold">
+        <div className="text-white font-semibold text-sm sm:text-base">
           {currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
         </div>
-        <button onClick={nextMonth} className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors">
-          <ChevronRight size={20} />
+        <button onClick={nextMonth} className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center">
+          <ChevronRight size={18} />
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-1 text-center mb-2">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1 text-center mb-1 sm:mb-2">
         {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-          <div key={d} className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">
+          <div key={d} className="text-[9px] sm:text-[10px] uppercase font-bold text-gray-500 tracking-wider py-1">
             {d}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1 justify-items-center">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1 justify-items-center">
         {days}
       </div>
     </div>

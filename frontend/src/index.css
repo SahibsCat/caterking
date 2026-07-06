@@ -245,16 +245,20 @@ select option {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: 7rem 1rem 1rem 1rem;
+  padding: 1rem;
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
   animation: fadeIn 0.2s ease;
+  overflow-y: auto;
 }
 .modal-box {
   background: #2D0000;
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: var(--radius-xl);
   width: 100%;
+  max-height: calc(100dvh - 2rem);
   animation: scaleIn 0.25s ease;
   box-shadow: 0 25px 60px rgba(0,0,0,0.6);
 }

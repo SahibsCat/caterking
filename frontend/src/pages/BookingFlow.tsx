@@ -1,11 +1,60 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { API_BASE_URL } from '../config';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Check, Info, Sparkles, Star, Loader2, ShieldCheck, ChefHat } from 'lucide-react';
+import { Check, Info, Sparkles, Star, Loader2, ShieldCheck, ChefHat, Navigation } from 'lucide-react';
 import { formatAED } from '../utils/currency';
 import SuccessModal from '../components/SuccessModal';
 import { toast } from '../components/Toast';
 import Calendar from '../components/Calendar';
+import { useLocation } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+import markerIconPng from 'leaflet/dist/images/marker-icon.png';
+import markerShadowPng from 'leaflet/dist/images/marker-shadow.png';
+
+const DefaultIcon = L.icon({
+  iconUrl: markerIconPng,
+  shadowUrl: markerShadowPng,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+const ChangeMapView = ({ center }: { center: [number, number] }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, 15);
+  }, [center, map]);
+  return null;
+};
+
+const DraggableMarker = ({ center, onPositionChange }: { center: [number, number], onPositionChange: (lat: number, lng: number) => void }) => {
+  const markerRef = useRef<L.Marker>(null);
+  const eventHandlers = useMemo(
+    () => ({
+      dragend() {
+        const marker = markerRef.current;
+        if (marker != null) {
+          const latLng = marker.getLatLng();
+          onPositionChange(latLng.lat, latLng.lng);
+        }
+      },
+    }),
+    [onPositionChange],
+  );
+
+  return (
+    <Marker
+      draggable={true}
+      eventHandlers={eventHandlers}
+      position={center}
+      ref={markerRef}
+    />
+  );
+};
 
 export interface MenuItem {
   id: string;
@@ -22,10 +71,13 @@ export interface MenuItem {
 
 const steps = ['Plan', 'Details'];
 const packageOptions = [
-  { name: 'Standard', price: 120, description: 'Balanced selections for relaxed gatherings and everyday celebrations.' },
+  { name: 'Standard', price: 40, description: 'Balanced selections for relaxed gatherings and everyday celebrations.' },
   { name: 'Premium', price: 180, description: 'Elevated menu variety with refined presentation for special events.' },
   { name: 'Signature', price: 250, description: 'Chef-led premium experience for high-impact occasions.' },
 ];
+
+const NON_VEG_TYPES = ['Chicken', 'Lamb', 'Fish', 'Prawns'] as const;
+type NonVegType = typeof NON_VEG_TYPES[number];
 
 interface IFormData {
   name: string;
@@ -37,6 +89,7 @@ interface IFormData {
   occasion: string;
   serviceType: 'Delivery' | 'Delivery + Service' | 'Buffet';
   foodPreference: 'Veg' | 'Non-Veg' | 'Mixed';
+  nonVegType: NonVegType | '';
   email: string;
   address: {
     flatVilla: string;
@@ -105,19 +158,31 @@ const BookingFlow = () => {
     };
   }, []);
 
+  const location = useLocation();
   const [currentStep, setCurrentStep] = useState(0);
   const [showBookingPrompt, setShowBookingPrompt] = useState(false);
   const [bookingPromptStep, setBookingPromptStep] = useState(0);
+  const [isLocating, setIsLocating] = useState(false);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([25.2048, 55.2708]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('start') === 'true') {
+      setShowBookingPrompt(true);
+      setBookingPromptStep(0);
+    }
+  }, [location.search]);
   const [formData, setFormData] = useState<IFormData>({
     name: localStorage.getItem('leadName') || '',
     mobile: localStorage.getItem('leadMobile') || '',
     venue: 'Dubai',
     date: '',
-    guests: 10,
+    guests: 20,
     package: '',
     occasion: 'Birthday Party',
     serviceType: 'Delivery',
     foodPreference: 'Mixed',
+    nonVegType: '',
     email: '',
     address: {
       flatVilla: '',
@@ -155,10 +220,75 @@ const BookingFlow = () => {
     }
   }, [formData.occasion, formData.package]);
 
-  const calculateTotalPrice = () => {
-    const pkgBasePrice = formData.package === 'Standard' ? 120 : formData.package === 'Premium' ? 180 : 250;
-    let total = pkgBasePrice * formData.guests;
+  const detectLocation = async () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          setMapCenter([latitude, longitude]);
+          await reverseGeocode(latitude, longitude);
+          toast.success('Location detected and address filled');
+        } catch {
+          toast.error('Could not fetch address. Please fill manually.');
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      () => {
+        toast.error('Location access denied. Please fill the address manually.');
+        setIsLocating(false);
+      }
+    );
+  };
+
+  const reverseGeocode = async (lat: number, lon: number) => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+      const data = await res.json();
+      const addr = data.address || {};
+      setFormData(prev => ({
+        ...prev,
+        address: {
+          flatVilla: addr.house_number || addr.building || prev.address.flatVilla || '',
+          street: addr.road || addr.street || '',
+          area: addr.suburb || addr.neighbourhood || addr.district || addr.city || '',
+          landmark: addr.amenity || addr.tourism || prev.address.landmark || '',
+        }
+      }));
+    } catch {
+      toast.error('Could not fetch address details for this location');
+    }
+  };
+
+  const geocodeAddress = async () => {
+    const { street, area } = formData.address;
+    const query = [street, area, 'Dubai'].filter(Boolean).join(', ');
+    if (!query || query === 'Dubai') return;
     
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          const lat = parseFloat(data[0].lat);
+          const lon = parseFloat(data[0].lon);
+          setMapCenter([lat, lon]);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+
+  const calculateTotalPrice = () => {
+    const pkgBasePrice = formData.package === 'Standard' ? 40 : formData.package === 'Premium' ? 180 : 250;
+    let total = pkgBasePrice * formData.guests;
     if (isCustomizing) {
         total = formData.selectedItems.reduce((acc, item) => acc + (item.base_price * (item.quantity || 1) * formData.guests / 10), 0);
     }
@@ -205,8 +335,8 @@ const BookingFlow = () => {
         toast.error('Please choose a venue');
         return;
       }
-      if (!formData.guests || formData.guests < 10) {
-        toast.error('Please choose at least 10 guests');
+      if (!formData.guests || formData.guests < 20) {
+        toast.error('Minimum booking size is 20 guests');
         return;
       }
       setBookingPromptStep(1);
@@ -248,54 +378,14 @@ const BookingFlow = () => {
     setIsMenuChoiceOpen(true);
   };
 
-  const handleContinue = () => {
-    nextStep();
-  };
 
-  const nextStep = () => {
-    const newErrors: string[] = [];
-    
-    if (currentStep === 0) {
-      if (!formData.date) newErrors.push('date');
-      if (!formData.venue) newErrors.push('venue');
-      if (!formData.guests || formData.guests < 10) newErrors.push('guests');
-      if (!formData.occasion) newErrors.push('occasion');
-      if (!formData.serviceType) newErrors.push('serviceType');
-      if (!formData.foodPreference) newErrors.push('foodPreference');
-      if (!formData.package) newErrors.push('package');
-    } else if (currentStep === 1) {
-      if (!formData.name.trim()) newErrors.push('name');
-      else if (!/^[A-Za-z\s]+$/.test(formData.name.trim())) newErrors.push('name_format');
-      
-      if (!formData.mobile.trim()) newErrors.push('mobile');
-      else if (!/^\d+$/.test(formData.mobile.trim())) newErrors.push('mobile_format');
-      
-      if (!formData.email.trim()) newErrors.push('email');
-      else if (!/\S+@\S+\.\S+/.test(formData.email.trim())) newErrors.push('email_format');
-      
-      if (!formData.address.flatVilla.trim()) newErrors.push('address_flat');
-      if (!formData.address.street.trim()) newErrors.push('address_street');
-      if (!formData.address.area.trim()) newErrors.push('address_area');
-    }
-
-    if (newErrors.length > 0) {
-      setErrors(newErrors);
-      scrollToError();
-      toast.error('Please resolve validation errors to proceed');
-      return;
-    }
-
-    setErrors([]);
-    setCurrentStep((prev: number) => Math.min(prev + 1, steps.length - 1));
-  };
-  const prevStep = () => setCurrentStep((prev: number) => Math.max(prev - 1, 0));
 
   const handleCompleteBooking = async () => {
     const finalErrors: string[] = [];
     
     if (!formData.date) finalErrors.push('date');
     if (!formData.venue) finalErrors.push('venue');
-    if (!formData.guests || formData.guests < 10) finalErrors.push('guests');
+    if (!formData.guests || formData.guests < 20) finalErrors.push('guests');
     if (!formData.occasion) finalErrors.push('occasion');
     if (!formData.serviceType) finalErrors.push('serviceType');
     
@@ -357,7 +447,7 @@ const BookingFlow = () => {
         },
         additionalChoices: [],
         pricing: {
-          total: ((formData.package === 'Standard' ? 120 : formData.package === 'Premium' ? 180 : 250) * formData.guests) * 1.05
+          total: ((formData.package === 'Standard' ? 40 : formData.package === 'Premium' ? 180 : 250) * formData.guests) * 1.05
         },
         status: 'pending'
       };
@@ -387,29 +477,34 @@ const BookingFlow = () => {
   const [showInclusionPopup, setShowInclusionPopup] = useState(false);
 
   return (
-    <div className="min-h-screen w-full px-3 pb-10 pt-4 sm:px-4 sm:pt-6 lg:px-6 lg:pt-8 max-w-6xl mx-auto relative animate-fade-in">
-      <AnimatePresence>
-        {isReplaceModalOpen && (
-          <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => setIsReplaceModalOpen(false)}>
+    <div className="min-h-screen w-full px-3 pb-8 pt-3 sm:px-4 sm:pt-6 sm:pb-10 lg:px-6 lg:pt-8 max-w-6xl mx-auto relative animate-fade-in">
+      {createPortal(
+        <AnimatePresence>
+          {isReplaceModalOpen && (
+            <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => setIsReplaceModalOpen(false)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               onClick={e => e.stopPropagation()}
-              className="modal-box max-w-2xl p-8 max-h-[80vh] overflow-y-auto"
+              className="modal-box max-w-2xl flex flex-col"
             >
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="text-2xl font-bold font-playfair text-white">Replace {itemToReplace?.category} Selection</h3>
-                  <p className="text-xs text-gray-400 mt-1">Swap your current choice with another available option.</p>
+              {/* Sticky Header */}
+              <div className="sticky top-0 z-20 bg-[#2D0000] px-4 sm:px-8 pt-4 sm:pt-8 pb-4 border-b border-white/10 rounded-t-[var(--radius-xl)] shrink-0">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-bold font-playfair text-white">Replace {itemToReplace?.category} Selection</h3>
+                    <p className="text-xs text-gray-400 mt-1">Swap your current choice with another available option.</p>
+                  </div>
+                  <button onClick={() => setIsReplaceModalOpen(false)} className="rounded-full border border-white/10 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 transition-colors hover:text-white hover:bg-white/10 shrink-0" aria-label="Close">✕</button>
                 </div>
-                <button onClick={() => setIsReplaceModalOpen(false)} className="text-gray-500 hover:text-white p-1">✕</button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-8 py-4 sm:py-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {menuItems
                   .filter(i => i.is_active && i.category === itemToReplace?.category)
-                  .filter(i => !i.packages || i.packages.length === 0 || i.packages.includes(formData.package))
                   .map(item => (
                     <div
                       key={item.id}
@@ -420,37 +515,46 @@ const BookingFlow = () => {
                       <span className="font-semibold text-sm text-gray-200">{item.name}</span>
                     </div>
                   ))}
+                </div>
               </div>
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
-      <AnimatePresence>
-        {isMenuCustomizerOpen && (
-          <div className="modal-overlay" style={{ zIndex: 9995 }} onClick={() => setIsMenuCustomizerOpen(false)}>
+      {createPortal(
+        <AnimatePresence>
+          {isMenuCustomizerOpen && (
+            <div className="modal-overlay" style={{ zIndex: 9995 }} onClick={() => setIsMenuCustomizerOpen(false)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.97 }}
               onClick={e => e.stopPropagation()}
-              className="modal-box max-w-3xl p-6 sm:p-8 max-h-[90dvh] overflow-y-auto"
+              className="modal-box max-w-3xl flex flex-col"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-2xl font-bold font-playfair text-white">Customize your menu</h3>
-                  <p className="mt-1 text-sm text-gray-400">Adjust portions, review weight and price impact, and continue when you are happy.</p>
+              {/* Sticky Header */}
+              <div className="sticky top-0 z-20 bg-[#2D0000] px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 border-b border-white/10 rounded-t-[var(--radius-xl)] shrink-0">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-bold font-playfair text-white">Customize your menu</h3>
+                    <p className="mt-1 text-xs sm:text-sm text-gray-400">Adjust portions, review weight and price impact, and continue when you are happy.</p>
+                  </div>
+                  <button onClick={() => setIsMenuCustomizerOpen(false)} className="rounded-full border border-white/10 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 transition-colors hover:text-white hover:bg-white/10 shrink-0" aria-label="Close customizer">✕</button>
                 </div>
-                <button onClick={() => setIsMenuCustomizerOpen(false)} className="rounded-full border border-white/10 p-2 text-gray-400 transition-colors hover:text-white">✕</button>
               </div>
 
-              <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr] h-[60vh]">
-                <div className="space-y-3 overflow-y-auto pr-2">
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+                <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+                <div className="space-y-3 overflow-y-auto min-h-0 pr-2 max-h-[50vh] lg:max-h-[55vh]">
                   {Array.from(new Set(menuItems.map(i => i.category))).map(cat => (
                     <div key={cat} className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <h4 className="text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-400">{cat}</h4>
                       <div className="mt-3 space-y-2">
-                        {menuItems.filter(i => i.is_active).filter(i => !i.packages || i.packages.length === 0 || i.packages.includes(formData.package)).filter(i => i.category === cat).filter(i => formData.foodPreference === 'Mixed' ? true : i.dietary === formData.foodPreference).map(item => {
+                        {menuItems.filter(i => i.is_active).filter(i => i.category === cat).map(item => {
                           const selectedItem = formData.selectedItems.find((si: MenuItem) => si.id === item.id);
                           const quantity = selectedItem?.quantity || 0;
                           return (
@@ -473,8 +577,8 @@ const BookingFlow = () => {
                   ))}
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 h-fit sticky top-0 flex flex-col max-h-full">
-                  <div className="flex-1 overflow-y-auto pr-2">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 h-fit lg:sticky lg:top-0 flex flex-col">
+                  <div className="flex-1 overflow-y-auto min-h-0 pr-2 max-h-[30vh] lg:max-h-[40vh]">
                     <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-tan">Selected menu</h4>
                   <div className="mt-4 space-y-3 text-sm">
                     {formData.selectedItems.length > 0 ? formData.selectedItems.map(item => (
@@ -493,13 +597,20 @@ const BookingFlow = () => {
                     <p className="mt-2 text-xl font-bold text-white">~{((formData.guests / 10) * formData.selectedItems.reduce((acc, i) => acc + (i.weight_ratio || 1) * (i.quantity || 1), 0)).toFixed(1)} kg</p>
                     <p className="mt-1 text-xs text-gray-400">This helps us tailor portions for your guest count.</p>
                   </div>
-                  <button type="button" onClick={() => { if (formData.selectedItems.length === 0) { toast.error('Choose at least one item before continuing'); return; } setIsMenuCustomizerOpen(false); setIsCustomizing(true); setCurrentStep(1); }} className="mt-5 w-full rounded-xl bg-tan px-4 py-3 text-sm font-semibold text-richBlack transition-colors hover:bg-tan/90 shrink-0">Confirm menu & continue</button>
                 </div>
+                </div>
+              </div>
+
+              {/* Sticky Footer */}
+              <div className="sticky bottom-0 z-20 bg-[#2D0000] px-4 sm:px-6 lg:px-8 py-4 border-t border-white/10 rounded-b-[var(--radius-xl)] shrink-0">
+                <button type="button" onClick={() => { if (formData.selectedItems.length === 0) { toast.error('Choose at least one item before continuing'); return; } setIsMenuCustomizerOpen(false); setIsCustomizing(true); setCurrentStep(1); }} className="w-full rounded-xl bg-tan px-4 py-3 text-sm font-semibold text-richBlack transition-colors hover:bg-tan/90 min-h-[44px]">Confirm menu & continue</button>
               </div>
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       <AnimatePresence>
         {isMenuChoiceOpen && (
@@ -509,7 +620,7 @@ const BookingFlow = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.97 }}
               onClick={e => e.stopPropagation()}
-              className="modal-box max-w-md p-6 sm:p-8 text-center max-h-[90dvh] overflow-y-auto"
+              className="modal-box max-w-md p-5 sm:p-8 text-center overflow-y-auto"
             >
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-tan/20 bg-tan/10">
                 <ChefHat className="text-tan" size={24} />
@@ -550,34 +661,40 @@ const BookingFlow = () => {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showBookingPrompt && (
-          <div className="modal-overlay" style={{ zIndex: 9996 }} onClick={() => setShowBookingPrompt(false)}>
+      {createPortal(
+        <AnimatePresence>
+          {showBookingPrompt && (
+            <div className="modal-overlay" style={{ zIndex: 9996 }} onClick={() => setShowBookingPrompt(false)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.97 }}
               onClick={e => e.stopPropagation()}
-              className="modal-box max-w-2xl p-6 sm:p-8 max-h-[90dvh] overflow-y-auto"
+              className="modal-box max-w-2xl flex flex-col"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-tan">Booking prompt {bookingPromptStep + 1} / 3</p>
-                  <h3 className="mt-2 text-2xl font-playfair font-bold text-white">
-                    {bookingPromptStep === 0 && 'Where and how many?'}
-                    {bookingPromptStep === 1 && 'When and for what?'}
-                    {bookingPromptStep === 2 && 'How would you like it served?'}
-                  </h3>
-                  <p className="mt-2 text-sm text-gray-300">
-                    {bookingPromptStep === 0 && 'Choose your service area and guest count to begin the booking.'}
-                    {bookingPromptStep === 1 && 'Select a date and event style to tailor your booking.'}
-                    {bookingPromptStep === 2 && 'Choose the service style, package, and food preference that fits your event.'}
-                  </p>
+              {/* Sticky Header */}
+              <div className="sticky top-0 z-20 bg-[#2D0000] px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-4 border-b border-white/10 rounded-t-[var(--radius-xl)] shrink-0">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-tan">Booking prompt {bookingPromptStep + 1} / 3</p>
+                    <h3 className="mt-2 text-xl sm:text-2xl font-playfair font-bold text-white">
+                      {bookingPromptStep === 0 && 'Where and how many?'}
+                      {bookingPromptStep === 1 && 'When and for what?'}
+                      {bookingPromptStep === 2 && 'How would you like it served?'}
+                    </h3>
+                    <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-gray-300">
+                      {bookingPromptStep === 0 && 'Choose your service area and guest count to begin the booking.'}
+                      {bookingPromptStep === 1 && 'Select a date and event style to tailor your booking.'}
+                      {bookingPromptStep === 2 && 'Choose the service style, package, and food preference that fits your event.'}
+                    </p>
+                  </div>
+                  <button type="button" onClick={() => setShowBookingPrompt(false)} className="rounded-full border border-white/10 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 transition-colors hover:text-white hover:bg-white/10 shrink-0" aria-label="Close booking">✕</button>
                 </div>
-                <button type="button" onClick={() => setShowBookingPrompt(false)} className="rounded-full border border-white/10 p-2 text-gray-400 transition-colors hover:text-white">✕</button>
               </div>
 
-              <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5">
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto min-h-0 px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5">
                 {bookingPromptStep === 0 && (
                   <div className="space-y-5">
                     <div className="space-y-2">
@@ -592,8 +709,12 @@ const BookingFlow = () => {
                     </div>
                     <div className="space-y-2">
                       <label className="block text-[10px] uppercase font-bold tracking-[0.2em] text-gray-400">Guest count</label>
-                      <input type="number" min="10" step="10" value={formData.guests} onChange={(e) => setFormData(prev => ({ ...prev, guests: Number(e.target.value) || 10 }))} className="input-field" />
-                      <p className="text-xs text-gray-500">Minimum booking size is 10 guests.</p>
+                      <div className="flex items-center gap-3">
+                        <button type="button" onClick={() => setFormData(prev => ({ ...prev, guests: Math.max(20, (prev.guests || 20) - 5) }))} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold hover:bg-white/10 transition-colors">−</button>
+                        <div className="flex-1 bg-white/5 border border-white/10 py-2.5 rounded-xl text-center text-sm font-bold text-white">{formData.guests}</div>
+                        <button type="button" onClick={() => setFormData(prev => ({ ...prev, guests: (prev.guests || 20) + 5 }))} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold hover:bg-white/10 transition-colors">+</button>
+                      </div>
+                      <p className="text-xs text-gray-500">Minimum booking size is 20 guests. Adjust in steps of 5.</p>
                     </div>
                   </div>
                 )}
@@ -603,10 +724,15 @@ const BookingFlow = () => {
                     <div className="space-y-2">
                       <label className="block text-[10px] uppercase font-bold tracking-[0.2em] text-gray-400">Preferred date</label>
                       <div className="w-full">
-                        <Calendar 
-                          availableDates={availableDates.map(d => d.date)} 
-                          selectedDate={formData.date} 
-                          onSelect={(d) => setFormData(prev => ({ ...prev, date: d }))} 
+                        <Calendar
+                          availableDates={availableDates
+                            .filter(d => {
+                              const diffHrs = (new Date(d.date).getTime() - Date.now()) / (1000 * 60 * 60);
+                              return diffHrs >= 48;
+                            })
+                            .map(d => d.date)}
+                          selectedDate={formData.date}
+                          onSelect={(d) => setFormData(prev => ({ ...prev, date: d }))}
                         />
                       </div>
                     </div>
@@ -638,11 +764,23 @@ const BookingFlow = () => {
                       <label className="block text-[10px] uppercase font-bold tracking-[0.2em] text-gray-400">Food preference</label>
                       <div className="grid gap-2 sm:grid-cols-3">
                         {(['Veg', 'Non-Veg', 'Mixed'] as const).map(option => (
-                          <button key={option} type="button" onClick={() => setFormData(prev => ({ ...prev, foodPreference: option }))} className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${formData.foodPreference === option ? 'border-tan bg-tan/10 text-tan' : 'border-white/10 bg-white/5 text-white hover:bg-white/10'}`}>
+                          <button key={option} type="button" onClick={() => setFormData(prev => ({ ...prev, foodPreference: option, nonVegType: '' }))} className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${formData.foodPreference === option ? 'border-tan bg-tan/10 text-tan' : 'border-white/10 bg-white/5 text-white hover:bg-white/10'}`}>
                             {formData.foodPreference === option && <Check size={14} />} {option}
                           </button>
                         ))}
                       </div>
+                      {formData.foodPreference === 'Non-Veg' && (
+                        <div className="mt-3 space-y-1.5">
+                          <label className="block text-[10px] uppercase font-bold tracking-[0.2em] text-gray-400">Non-Veg type</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {NON_VEG_TYPES.map(type => (
+                              <button key={type} type="button" onClick={() => setFormData(prev => ({ ...prev, nonVegType: type }))} className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${formData.nonVegType === type ? 'border-tan bg-tan/10 text-tan' : 'border-white/10 bg-white/5 text-white hover:bg-white/10'}`}>
+                                {formData.nonVegType === type && <Check size={12} />} {type}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <label className="block text-[10px] uppercase font-bold tracking-[0.2em] text-gray-400">Package</label>
@@ -680,42 +818,50 @@ const BookingFlow = () => {
                     </div>
                   </div>
                 )}
+                </div>
               </div>
 
-              <div className="mt-6 flex items-center justify-between gap-3">
-                <button type="button" onClick={() => bookingPromptStep > 0 ? setBookingPromptStep(prev => prev - 1) : setShowBookingPrompt(false)} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10">
-                  {bookingPromptStep > 0 ? 'Back' : 'Cancel'}
-                </button>
-                <button type="button" onClick={goToNextBookingPrompt} className="rounded-xl bg-tan px-4 py-2.5 text-sm font-semibold text-richBlack transition-colors hover:bg-tan/90">
-                  {bookingPromptStep === 2 ? 'Continue to menu' : 'Next'}
-                </button>
+              {/* Sticky Footer */}
+              <div className="sticky bottom-0 z-20 bg-[#2D0000] px-4 sm:px-6 lg:px-8 py-4 border-t border-white/10 rounded-b-[var(--radius-xl)] shrink-0">
+                <div className="flex items-center justify-between gap-3">
+                  <button type="button" onClick={() => bookingPromptStep > 0 ? setBookingPromptStep(prev => prev - 1) : setShowBookingPrompt(false)} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10 min-h-[44px]">
+                    {bookingPromptStep > 0 ? 'Back' : 'Cancel'}
+                  </button>
+                  <button type="button" onClick={goToNextBookingPrompt} className="rounded-xl bg-tan px-4 py-2.5 text-sm font-semibold text-richBlack transition-colors hover:bg-tan/90 min-h-[44px]">
+                    {bookingPromptStep === 2 ? 'Continue to menu' : 'Next'}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="overflow-hidden rounded-[32px] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(201,160,92,0.18),_transparent_38%),linear-gradient(135deg,_rgba(255,255,255,0.06),_transparent_55%),#2D0000] p-5 sm:p-7 lg:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.35)]"
+        className="overflow-hidden rounded-2xl sm:rounded-[32px] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(201,160,92,0.18),_transparent_38%),linear-gradient(135deg,_rgba(255,255,255,0.06),_transparent_55%),#2D0000] p-4 sm:p-6 lg:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.35)]"
       >
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-tan/20 bg-tan/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-tan">
               <Sparkles size={12} /> Curated catering in just three simple steps
             </div>
-            <h1 className="mt-4 text-3xl sm:text-4xl font-playfair font-bold text-white">Plan your event with clarity and confidence.</h1>
+            <h1 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-playfair font-bold text-white">Plan your event with clarity and confidence.</h1>
             <p className="mt-3 max-w-xl text-sm leading-6 text-gray-300">
               The booking flow is now simplified so you can move from ideas to a polished catering request without the usual friction.
             </p>
           </div>
-          <div className="rounded-2xl border border-tan/20 bg-black/20 p-4 min-w-[220px]">
-            <p className="text-[10px] uppercase tracking-[0.25em] text-gray-400">Estimated total</p>
-            <div className="mt-2 text-3xl font-bold text-tan">{formatAED(totalEstimate)}</div>
-            <p className="mt-1 text-xs text-gray-400">For {formData.guests} guests • {selectedMenuCount} selected portions</p>
-          </div>
+          {currentStep >= 1 && formData.package && (
+            <div className="rounded-2xl border border-tan/20 bg-black/20 p-4 min-w-[220px]">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-gray-400">Estimated total</p>
+              <div className="mt-2 text-3xl font-bold text-tan">{formatAED(totalEstimate)}</div>
+              <p className="mt-1 text-xs text-gray-400">For {formData.guests} guests • {selectedMenuCount} selected portions</p>
+            </div>
+          )}
         </div>
 
         <div className="mt-7 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -736,7 +882,7 @@ const BookingFlow = () => {
         </div>
       </motion.div>
 
-      <div className="mt-7 grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
+      <div className="mt-5 sm:mt-7 grid gap-4 sm:gap-6 lg:grid-cols-[1.35fr_0.65fr]">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
@@ -744,7 +890,7 @@ const BookingFlow = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.25 }}
-            className="rounded-[28px] border border-white/10 bg-[#2D0000] p-5 sm:p-8 shadow-2xl"
+            className="rounded-2xl sm:rounded-[28px] border border-white/10 bg-[#2D0000] p-4 sm:p-6 lg:p-8 shadow-2xl"
           >
             {isDataLoading ? (
               <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/10 bg-white/5 p-8 text-center">
@@ -800,24 +946,44 @@ const BookingFlow = () => {
                   </div>
 
                   <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-tan">Delivery address</p>
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-tan">Delivery address</p>
+                      <button type="button" onClick={detectLocation} disabled={isLocating} className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-tan bg-tan/10 hover:bg-tan/20 px-3 py-1.5 rounded-lg transition-colors border border-tan/20">
+                        {isLocating ? <Loader2 size={12} className="animate-spin" /> : <Navigation size={12} />}
+                        {isLocating ? 'Locating...' : 'Detect location'}
+                      </button>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-1.5">
                         <label className="block text-[10px] uppercase font-bold text-gray-400 ml-1">Villa / flat no</label>
                         <input type="text" placeholder="Villa 12 or Apt 402" className={`input-field ${errors.includes('address_flat') ? 'border-red-500' : ''}`} value={formData.address.flatVilla} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, flatVilla: e.target.value } })} />
                       </div>
                       <div className="space-y-1.5">
                         <label className="block text-[10px] uppercase font-bold text-gray-400 ml-1">Street name</label>
-                        <input type="text" placeholder="Enter street name" className={`input-field ${errors.includes('address_street') ? 'border-red-500' : ''}`} value={formData.address.street} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, street: e.target.value } })} />
+                        <input type="text" placeholder="Enter street name" className={`input-field ${errors.includes('address_street') ? 'border-red-500' : ''}`} value={formData.address.street} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, street: e.target.value } })} onBlur={geocodeAddress} />
                       </div>
                       <div className="space-y-1.5">
                         <label className="block text-[10px] uppercase font-bold text-gray-400 ml-1">Area / community</label>
-                        <input type="text" placeholder="Marina, Al Barsha" className={`input-field ${errors.includes('address_area') ? 'border-red-500' : ''}`} value={formData.address.area} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, area: e.target.value } })} />
+                        <input type="text" placeholder="Marina, Al Barsha" className={`input-field ${errors.includes('address_area') ? 'border-red-500' : ''}`} value={formData.address.area} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, area: e.target.value } })} onBlur={geocodeAddress} />
                       </div>
                       <div className="space-y-1.5">
                         <label className="block text-[10px] uppercase font-bold text-gray-400 ml-1">Landmark</label>
                         <input type="text" placeholder="Near building or park" className="input-field" value={formData.address.landmark} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, landmark: e.target.value } })} />
                       </div>
+                    </div>
+
+                    <div className="mt-4 rounded-xl overflow-hidden border border-white/10 h-48 sm:h-56 lg:h-64 z-0 relative">
+                      <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
+                        <TileLayer
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        />
+                        <ChangeMapView center={mapCenter} />
+                        <DraggableMarker center={mapCenter} onPositionChange={(lat, lng) => {
+                          setMapCenter([lat, lng]);
+                          reverseGeocode(lat, lng);
+                        }} />
+                      </MapContainer>
                     </div>
                   </div>
                 </div>
@@ -837,12 +1003,12 @@ const BookingFlow = () => {
                       <p className="mt-1 text-sm font-semibold text-white">{formData.package}</p>
                     </div>
                   </div>
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="mt-6 pt-5 border-t border-white/10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Final estimate</p>
                       <p className="text-2xl font-bold text-tan">{formatAED(totalEstimate)}</p>
                     </div>
-                    <button onClick={handleCompleteBooking} className="btn btn-primary px-7 py-3.5 rounded-xl cursor-pointer">Submit booking request</button>
+                    <button onClick={handleCompleteBooking} className="btn btn-primary px-7 py-3 rounded-xl cursor-pointer">Submit request</button>
                   </div>
                 </div>
               </div>
@@ -851,7 +1017,7 @@ const BookingFlow = () => {
         </AnimatePresence>
 
         <div className="space-y-4">
-          <div className="rounded-[28px] border border-white/10 bg-[#2D0000] p-5 shadow-2xl">
+          <div className="rounded-2xl sm:rounded-[28px] border border-white/10 bg-[#2D0000] p-4 sm:p-5 shadow-2xl">
             <div className="flex items-center gap-2 text-tan">
               <ShieldCheck size={16} />
               <h3 className="text-sm font-semibold uppercase tracking-[0.2em]">Your booking summary</h3>
@@ -873,6 +1039,17 @@ const BookingFlow = () => {
                 <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Service</p>
                 <p className="mt-1 text-white">{formData.serviceType}</p>
               </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Menu & Preferences</p>
+                <p className="mt-1 text-white">{formData.foodPreference} {formData.nonVegType && `(${formData.nonVegType})`}</p>
+                <p className="text-xs text-gray-400 mt-1">{formData.selectedItems.length} items selected</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Delivery Address</p>
+                <p className="mt-1 text-white line-clamp-2">
+                  {formData.address.area ? [formData.address.flatVilla, formData.address.street, formData.address.area].filter(Boolean).join(', ') : 'Not provided yet'}
+                </p>
+              </div>
               <div className="rounded-xl border border-tan/20 bg-tan/10 p-3">
                 <p className="text-[10px] uppercase tracking-[0.2em] text-tan">Next step</p>
                 <p className="mt-1 text-sm text-white">We review your request and confirm the final details within one business day.</p>
@@ -880,23 +1057,6 @@ const BookingFlow = () => {
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {currentStep === 0 ? (
-          <button onClick={openBookingPrompt} className="flex items-center justify-center gap-2 btn btn-primary px-6 py-3.5 rounded-xl text-xs font-semibold">
-            Start booking <ChevronRight size={16} />
-          </button>
-        ) : (
-          <>
-            <button onClick={prevStep} className="flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-xs font-semibold transition-all btn btn-secondary">
-              <ChevronLeft size={16} /> Back
-            </button>
-            <button onClick={currentStep === steps.length - 1 ? handleCompleteBooking : handleContinue} className="flex items-center justify-center gap-2 btn btn-primary px-6 py-3.5 rounded-xl text-xs font-semibold">
-              {currentStep === steps.length - 1 ? 'Submit booking request' : 'Continue'} <ChevronRight size={16} />
-            </button>
-          </>
-        )}
       </div>
 
       <SuccessModal 

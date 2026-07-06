@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { User, Calendar, Phone, Mail, MapPin, Download, Search } from 'lucide-react';
+import { User, Calendar, Phone, Mail, MapPin, Download, Search, Share2, Map } from 'lucide-react';
 import { API_BASE_URL } from '../../config';
 import { motion } from 'framer-motion';
 import { toast } from '../../components/Toast';
@@ -195,6 +195,9 @@ const CustomerManager = () => {
                     <div className="flex items-center gap-2.5 text-gray-300">
                       <Phone size={14} className="text-tan/60 shrink-0" />
                       <span className="font-medium text-xs text-gray-300">{lead.mobile}</span>
+                      <a href={`https://wa.me/${lead.mobile.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="ml-auto flex items-center gap-1 text-[10px] text-green-400 hover:text-green-300 transition-colors bg-green-500/10 hover:bg-green-500/20 px-2 py-0.5 rounded-full border border-green-500/20" title="Chat on WhatsApp">
+                        <Share2 size={10} /> Chat
+                      </a>
                     </div>
                     {lead.email && (
                       <div className="flex items-center gap-2.5 text-gray-300">
@@ -209,11 +212,16 @@ const CustomerManager = () => {
                     {lead.address ? (
                       <div className="flex items-start gap-2.5 text-gray-300">
                         <MapPin size={14} className="text-tan/60 shrink-0 mt-0.5" />
-                        <span className="font-medium text-xs text-gray-300 line-clamp-2">
-                          {typeof lead.address === 'string' ? lead.address : 
-                            [lead.address.flatVilla, lead.address.street, lead.address.area].filter(Boolean).join(', ')
-                          }
-                        </span>
+                        <div className="flex flex-col gap-1 w-full">
+                          <span className="font-medium text-xs text-gray-300 line-clamp-2">
+                            {typeof lead.address === 'string' ? lead.address : 
+                              [lead.address.flatVilla, lead.address.street, lead.address.area].filter(Boolean).join(', ')
+                            }
+                          </span>
+                          <a href={`https://maps.google.com/?q=${encodeURIComponent(typeof lead.address === 'string' ? lead.address : [lead.address.flatVilla, lead.address.street, lead.address.area, lead.address.landmark].filter(Boolean).join(', '))}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 transition-colors bg-blue-500/10 hover:bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-500/20 w-fit">
+                            <Map size={10} /> View on Map
+                          </a>
+                        </div>
                       </div>
                     ) : (
                       <span className="text-xs text-gray-600 italic">No address provided</span>

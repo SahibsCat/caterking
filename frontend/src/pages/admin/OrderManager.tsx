@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { API_BASE_URL } from '../../config';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { User as UserIcon, Calendar, MapPin, Info, FileSpreadsheet, ChevronDown, ChevronUp } from 'lucide-react';
+import { User as UserIcon, Calendar, MapPin, Info, FileSpreadsheet, ChevronDown, ChevronUp, Share2, Map } from 'lucide-react';
 import { formatAED } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
 import { toast } from '../../components/Toast';
@@ -338,13 +338,20 @@ const OrderManager = () => {
                         </div>
                         <div>
                           <p className="text-sm text-gray-200">{order.eventDetails.venue} Region</p>
-                          <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
-                            {typeof order.customerDetails?.deliveryAddress === 'object' ? (
-                              `${order.customerDetails.deliveryAddress.flatVilla}, ${order.customerDetails.deliveryAddress.street}, ${order.customerDetails.deliveryAddress.area}${order.customerDetails.deliveryAddress.landmark ? ` (Near ${order.customerDetails.deliveryAddress.landmark})` : ''}`
-                            ) : (
-                              order.customerDetails?.deliveryAddress
+                          <div className="flex flex-col gap-1 w-full">
+                            <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
+                              {typeof order.customerDetails?.deliveryAddress === 'object' ? (
+                                `${order.customerDetails.deliveryAddress.flatVilla}, ${order.customerDetails.deliveryAddress.street}, ${order.customerDetails.deliveryAddress.area}${order.customerDetails.deliveryAddress.landmark ? ` (Near ${order.customerDetails.deliveryAddress.landmark})` : ''}`
+                              ) : (
+                                order.customerDetails?.deliveryAddress
+                              )}
+                            </p>
+                            {order.customerDetails?.deliveryAddress && (
+                              <a href={`https://maps.google.com/?q=${encodeURIComponent(typeof order.customerDetails.deliveryAddress === 'object' ? `${order.customerDetails.deliveryAddress.flatVilla}, ${order.customerDetails.deliveryAddress.street}, ${order.customerDetails.deliveryAddress.area}` : order.customerDetails.deliveryAddress)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 transition-colors bg-blue-500/10 hover:bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-500/20 w-fit">
+                                <Map size={10} /> View on Map
+                              </a>
                             )}
-                          </p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -358,6 +365,9 @@ const OrderManager = () => {
                     </div>
 
                     <div className="flex flex-col gap-2 mt-auto w-40 sm:w-auto">
+                      <a href={`https://wa.me/${order.customerDetails?.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${order.customerDetails?.name}, this is Cater Raja regarding your order ${order.orderId}.`)}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/20 flex items-center justify-center gap-1.5">
+                        <Share2 size={12} /> Contact on WhatsApp
+                      </a>
                       {order.status === 'pending' && (
                         <button 
                           onClick={() => handleStatusChangeRequest(order._id, 'unfulfilled')}
